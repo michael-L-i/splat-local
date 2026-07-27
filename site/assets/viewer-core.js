@@ -25,6 +25,43 @@ export function fileTypeFor(name) {
   return FILE_TYPES[ext] || null;
 }
 
+// --- order statistics --------------------------------------------------------
+// In-place quickselect (nth_element): partitions arr around its k-th smallest
+// value and returns it, in O(n) expected time. Camera framing reads a handful
+// of percentiles off hundreds of thousands of coordinates; full sorts spent
+// O(n log n) per pass to produce one number each.
+function select(arr, k) {
+  const swap = (i, j) => { const t = arr[i]; arr[i] = arr[j]; arr[j] = t; };
+  let lo = 0, hi = arr.length - 1;
+  while (lo < hi) {
+    // Median-of-three pivot: splat coordinates arrive spatially clustered, and
+    // a naive pivot would hit the O(n^2) path on runs like that.
+    const mid = (lo + hi) >> 1;
+    if (arr[mid] < arr[lo]) swap(mid, lo);
+    if (arr[hi] < arr[lo]) swap(hi, lo);
+    if (arr[hi] < arr[mid]) swap(hi, mid);
+    const pivot = arr[mid];
+    let i = lo, j = hi;
+    while (i <= j) {
+      while (arr[i] < pivot) i++;
+      while (arr[j] > pivot) j--;
+      if (i <= j) { swap(i, j); i++; j--; }
+    }
+    if (k <= j) hi = j;
+    else if (k >= i) lo = i;
+    else return arr[k];
+  }
+  return arr[k];
+}
+
+// The same value the old sort-then-index produced: the k-th smallest for
+// k = min(len-1, floor(len * p)). Reorders arr, but preserves its contents, so
+// repeated percentiles off one array stay correct -- pass a copy only when the
+// original index order is still needed.
+function pct(arr, p) {
+  return select(arr, Math.min(arr.length - 1, Math.floor(arr.length * p)));
+}
+
 export function createViewer(canvas, opts = {}) {
   const { idleSpin = false } = opts;
 
@@ -208,11 +245,6 @@ export function createViewer(canvas, opts = {}) {
     controls.update();
   }
 
-  const pct = (arr, p) => {
-    const s = [...arr].sort((a, b) => a - b);
-    return s[Math.min(s.length - 1, Math.floor(s.length * p))];
-  };
-
   // Frame a splat by trimming outliers radially, then boxing what survives.
   //
   // A plain min/max box is useless here: trained scenes throw floaters a long
@@ -247,7 +279,7 @@ export function createViewer(canvas, opts = {}) {
         pts[i * 3] - centre[0], pts[i * 3 + 1] - centre[1], pts[i * 3 + 2] - centre[2],
       );
     }
-    const keepRadius = pct(dist, 0.75);
+    const keepRadius = pct(dist.slice(), 0.75); // copy: dist is re-read by index below
 
     const kept = [[], [], []];
     for (let i = 0; i < n; i++) {

@@ -24,6 +24,42 @@ function parsePLYAsync(buffer) {
   });
 }
 
+// --- order statistics --------------------------------------------------------
+// In-place quickselect (nth_element): partitions arr around its k-th smallest
+// value and returns it, in O(n) expected time. Camera framing reads a handful
+// of percentiles off hundreds of thousands of coordinates; full sorts spent
+// O(n log n) per pass to produce one number each.
+function select(arr, k) {
+  const swap = (i, j) => { const t = arr[i]; arr[i] = arr[j]; arr[j] = t; };
+  let lo = 0, hi = arr.length - 1;
+  while (lo < hi) {
+    // Median-of-three pivot: point coordinates arrive spatially ordered often
+    // enough that a naive pivot would hit the O(n^2) path.
+    const mid = (lo + hi) >> 1;
+    if (arr[mid] < arr[lo]) swap(mid, lo);
+    if (arr[hi] < arr[lo]) swap(hi, lo);
+    if (arr[hi] < arr[mid]) swap(hi, mid);
+    const pivot = arr[mid];
+    let i = lo, j = hi;
+    while (i <= j) {
+      while (arr[i] < pivot) i++;
+      while (arr[j] > pivot) j--;
+      if (i <= j) { swap(i, j); i++; j--; }
+    }
+    if (k <= j) hi = j;
+    else if (k >= i) lo = i;
+    else return arr[k];
+  }
+  return arr[k];
+}
+
+// The same value the old sort-then-index produced: the k-th smallest for
+// k = min(len-1, floor(len * p)). Reorders arr, but preserves its contents, so
+// repeated percentiles off one array stay correct.
+function percentile(arr, p) {
+  return select(arr, Math.min(arr.length - 1, Math.floor(arr.length * p)));
+}
+
 // --- viewer ------------------------------------------------------------------
 export function createViewer(canvas) {
   const scene = new THREE.Scene();
@@ -157,14 +193,11 @@ export function createViewer(canvas) {
     applyPixelRatio(now - lastMotion < SETTLE_MS ? DPR_MOVING : DPR_STILL);
   }
 
-  function percentile(sorted, p) { return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))]; }
-
   // fit camera to the parsed (pre-flip) point positions, clamping outliers
   function fitToPositions(positions) {
     const n = positions.length / 3;
     const xs = new Array(n), ys = new Array(n), zs = new Array(n);
     for (let i = 0; i < n; i++) { xs[i] = positions[i * 3]; ys[i] = positions[i * 3 + 1]; zs[i] = positions[i * 3 + 2]; }
-    xs.sort((a, b) => a - b); ys.sort((a, b) => a - b); zs.sort((a, b) => a - b);
     const lo = [percentile(xs, 0.05), percentile(ys, 0.05), percentile(zs, 0.05)];
     const hi = [percentile(xs, 0.95), percentile(ys, 0.95), percentile(zs, 0.95)];
     // world group is rotated 180deg about X: (x,y,z) -> (x,-y,-z)
