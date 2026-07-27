@@ -24,12 +24,21 @@ Every event is `event: state` with a full JSON job snapshot:
   "sparse_url": "/api/jobs/abc123/files/sparse.ply",
   "cameras": [{"position": [x,y,z], "rotation": [qw,qx,qy,qz]}],
   "checkpoint": {"url": ".../checkpoints/splat_10000.ply", "step": 10000, "total_steps": 30000},
-  "artifacts": [{"name": "scene.ply", "url": "...", "bytes": 123}],
+  "artifacts": [{"name": "scene.ply", "url": "...", "bytes": 123, "gaussians": 135575, "fill_ratio": 46.7}],
   "error": null
 }
 ```
 
-Fields are null/absent until their stage produces them. `checkpoint` always points at the latest exported `.ply`.
+Fields are null/absent until their stage produces them. `checkpoint` is what the viewer loads: the latest exported `.ply` during training, then `exports/scene-view.sog` once the export stage has built it (`step`/`total_steps` stay as they were).
+
+`gaussians` and `fill_ratio` (average overdraw layers per pixel, from `splat-transform --stats`) are present per artifact when Node is available; `name`/`url`/`bytes` are always present.
+
+## Export artifacts
+
+- **Archive** — `scene.ply`, `scene.spz`: what the user downloads. Full resolution, SH3, only NaN/Inf/degenerate gaussians removed. No quality decision is applied.
+- **View** — `scene-view.sog`: what the viewer loads. Same scene with an opacity floor (`Preset.view_opacity_min`) and Morton reordering, so viewer-side cleanup never affects the download.
+
+Without Node (`npx`), only the raw `scene.ply` checkpoint copy is produced and the viewer keeps the last training checkpoint.
 
 ## Job directory layout
 

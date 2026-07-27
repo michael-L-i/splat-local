@@ -10,6 +10,12 @@ class Preset:
     max_splats: int
     export_every: int
     lpips_weight: float = 0.0
+    # Opacity floor for the viewer-only artifact; the downloadable archive is never filtered.
+    # Measured on a 135,575-splat scene (fill ratio = average overdraw layers per pixel):
+    #   no filter -> 135,575 splats, 46.7 fill · gt,0.05 -> 109,551, 36.4 · gt,0.15 -> 59,748, 22.1
+    # Median splat opacity there was 0.127, so 0.15 halves the scene — a big win that needs
+    # human visual sign-off first. 0.05 drops near-invisible splats only: safe as a default.
+    view_opacity_min: float = 0.05
 
 
 PRESETS = {

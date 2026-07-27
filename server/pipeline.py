@@ -58,16 +58,25 @@ class Job:
 
     def cancel(self):
         self.cancelled = True
-        proc = self.proc
-        if proc is not None and proc.poll() is None:
-            try:
-                os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-            except ProcessLookupError:
-                pass
+        _kill_group(self.proc)
 
 
-def run_subprocess(job: Job, cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess:
-    """Run a blocking subprocess in its own process group so it can be killed on cancel."""
+def _kill_group(proc: subprocess.Popen | None):
+    if proc is not None and proc.poll() is None:
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+
+
+def run_subprocess(
+    job: Job, cmd: list[str], cwd: Path | None = None, timeout: float | None = None
+) -> subprocess.CompletedProcess:
+    """Run a blocking subprocess in its own process group so it can be killed on cancel.
+
+    `timeout` (seconds) bounds the run so a wedged tool can't hang the job forever; on
+    expiry the whole group is killed and subprocess.TimeoutExpired is raised.
+    """
     proc = subprocess.Popen(
         cmd,
         cwd=cwd,
@@ -77,7 +86,14 @@ def run_subprocess(job: Job, cmd: list[str], cwd: Path | None = None) -> subproc
         text=True,
     )
     job.proc = proc
-    stdout, stderr = proc.communicate()
+    try:
+        stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        _kill_group(proc)
+        proc.communicate()
+        job.proc = None
+        job.check_cancelled()
+        raise
     job.proc = None
     job.check_cancelled()
     if proc.returncode != 0:
