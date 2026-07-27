@@ -75,8 +75,20 @@ export function createViewer(canvas) {
   // No MSAA: splats are alpha-blended point sprites with no geometric edges for
   // multisampling to resolve, so it buys nothing and costs bandwidth everywhere.
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   scene.add(new SparkRenderer({ renderer })); // required for SplatMesh to draw
+
+  // --- adaptive resolution ---------------------------------------------------
+  // Rendering is fragment-bound, not splat-bound: every pixel blends dozens of
+  // near-transparent splats, so cost tracks the pixel count almost linearly.
+  // Cap the ceiling well below the old 2x, then render at 1x while the camera
+  // is in motion and restore the ceiling once it settles. Sharpness only drops
+  // while it isn't perceptible.
+  const DPR_STILL = Math.min(window.devicePixelRatio || 1, 1.5);
+  const DPR_MOVING = Math.min(DPR_STILL, 1);
+  const SETTLE_MS = 200;
+  let pixelRatio = DPR_STILL, pointerDown = false, lastMotion = -Infinity;
+  const _prevPos = new THREE.Vector3(), _prevTarget = new THREE.Vector3();
+  renderer.setPixelRatio(pixelRatio);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
@@ -100,6 +112,11 @@ export function createViewer(canvas) {
   });
   window.addEventListener("keyup", (e) => keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key));
   window.addEventListener("blur", () => keys.clear());
+
+  canvas.addEventListener("pointerdown", () => { pointerDown = true; }, { passive: true });
+  window.addEventListener("pointerup", () => { pointerDown = false; }, { passive: true });
+  window.addEventListener("pointercancel", () => { pointerDown = false; }, { passive: true });
+  canvas.addEventListener("wheel", () => { lastMotion = performance.now(); }, { passive: true });
 
   const _dir = new THREE.Vector3(), _right = new THREE.Vector3(), _move = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
   function updateNav(dt) {
@@ -140,6 +157,26 @@ export function createViewer(canvas) {
   }
   new ResizeObserver(resize).observe(canvas.parentElement);
   resize();
+
+  function applyPixelRatio(r) {
+    if (r === pixelRatio) return;
+    pixelRatio = r;
+    renderer.setPixelRatio(r);
+    resize(); // re-size the drawing buffer for the new ratio
+  }
+
+  // Record the camera pose at the top of a frame so updatePixelRatio can tell
+  // whether the frame actually moved it.
+  function markCameraPose() { _prevPos.copy(camera.position); _prevTarget.copy(controls.target); }
+
+  function updatePixelRatio(now) {
+    // Key/pointer state alone isn't enough: OrbitControls damping keeps nudging
+    // the camera for a while after the input ends, so watch the pose too.
+    const eps = Math.max(radius, 1e-3) * 1e-4;
+    const moved = camera.position.distanceTo(_prevPos) > eps || controls.target.distanceTo(_prevTarget) > eps;
+    if (moved || pointerDown || keys.size) lastMotion = now;
+    applyPixelRatio(now - lastMotion < SETTLE_MS ? DPR_MOVING : DPR_STILL);
+  }
 
   function percentile(sorted, p) { return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))]; }
 
@@ -245,8 +282,10 @@ export function createViewer(canvas) {
     requestAnimationFrame(animate);
     const dt = Math.min((now - lastT) / 1000, 0.1);
     lastT = now;
+    markCameraPose();
     updateNav(dt);
     controls.update();
+    updatePixelRatio(now);
     renderer.render(scene, camera);
   })();
 
