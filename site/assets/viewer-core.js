@@ -41,8 +41,22 @@ export function createViewer(canvas, opts = {}) {
 
   // No MSAA: splats are alpha-blended point sprites with no geometric edges for
   // multisampling to resolve, so it buys nothing and costs bandwidth everywhere.
+  // --- level of detail -------------------------------------------------------
+  // Spark ships a full LOD implementation but only uses it when a SplatMesh is
+  // constructed with `lod`; otherwise every splat is drawn every frame. With it
+  // on, traversal costs O(rendered splats) and splats behind the camera or wide
+  // of the view cone fall to coarser levels.
+  //
+  // `lod: 1.5` picks Spark's Tiny LoD build with a 1.5x ratio between levels --
+  // smoother transitions than 2.0. (Spark reads any truthy non-"quality" value
+  // as Tiny LoD and already defaults the ratio to 1.5; this just says so.)
+  const LOD = 1.5;
+  const MOBILE = window.matchMedia?.("(pointer: coarse)").matches ?? false;
+  const LOD_SPLAT_COUNT = MOBILE ? 4e5 : 1.5e6; // per-frame splat budget
+
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
-  scene.add(new SparkRenderer({ renderer })); // required for SplatMesh to draw
+  // SparkRenderer is required for SplatMesh to draw at all.
+  scene.add(new SparkRenderer({ renderer, lodSplatCount: LOD_SPLAT_COUNT }));
 
   // --- adaptive resolution ---------------------------------------------------
   // Rendering is fragment-bound, not splat-bound: every pixel blends dozens of
@@ -249,7 +263,12 @@ export function createViewer(canvas, opts = {}) {
   }
 
   async function loadSplat(url, fileType) {
-    const mesh = fileType ? new SplatMesh({ url, fileType }) : new SplatMesh({ url });
+    // nonLod keeps the un-decimated splats alongside the LOD tree; fitToSplat
+    // samples them for framing, and without it the base PackedSplats comes back
+    // empty and framing would silently fall back to the default pose.
+    const opts = { url, lod: LOD, nonLod: true };
+    if (fileType) opts.fileType = fileType;
+    const mesh = new SplatMesh(opts);
     await mesh.initialized;
     world.add(mesh);
     if (splat) { world.remove(splat); splat.dispose(); }

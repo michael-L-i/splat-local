@@ -74,8 +74,22 @@ export function createViewer(canvas) {
 
   // No MSAA: splats are alpha-blended point sprites with no geometric edges for
   // multisampling to resolve, so it buys nothing and costs bandwidth everywhere.
+  // --- level of detail -------------------------------------------------------
+  // Spark ships a full LOD implementation but only uses it when a SplatMesh is
+  // constructed with `lod`; otherwise every splat is drawn every frame. With it
+  // on, traversal costs O(rendered splats) and splats behind the camera or wide
+  // of the view cone fall to coarser levels.
+  //
+  // `lod: 1.5` picks Spark's Tiny LoD build with a 1.5x ratio between levels --
+  // smoother transitions than 2.0. (Spark reads any truthy non-"quality" value
+  // as Tiny LoD and already defaults the ratio to 1.5; this just says so.)
+  const LOD = 1.5;
+  const MOBILE = window.matchMedia?.("(pointer: coarse)").matches ?? false;
+  const LOD_SPLAT_COUNT = MOBILE ? 4e5 : 1.5e6; // per-frame splat budget
+
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
-  scene.add(new SparkRenderer({ renderer })); // required for SplatMesh to draw
+  // SparkRenderer is required for SplatMesh to draw at all.
+  scene.add(new SparkRenderer({ renderer, lodSplatCount: LOD_SPLAT_COUNT }));
 
   // --- adaptive resolution ---------------------------------------------------
   // Rendering is fragment-bound, not splat-bound: every pixel blends dozens of
@@ -252,7 +266,7 @@ export function createViewer(canvas) {
 
   async function doLoadCheckpoint(url) {
     try {
-      const mesh = new SplatMesh({ url });
+      const mesh = new SplatMesh({ url, lod: LOD });
       await mesh.initialized;
       world.add(mesh);
       if (splat) { world.remove(splat); splat.dispose(); }
