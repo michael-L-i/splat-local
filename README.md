@@ -40,7 +40,7 @@ video ──▶ sharp frames ──▶ camera poses ──▶ splat training ─
                             on MPS)           MCMC + mip AA)      .ply/.spz/.sog)
 ```
 
-- **Poses**: [COLMAP](https://colmap.github.io) (`pycolmap`) with sequential matching + loop detection — best quality. Optional experimental backend: [Depth Anything 3](https://github.com/ByteDance-Seed/Depth-Anything-3) running on Apple's MPS — much faster, slightly lower fidelity.
+- **Poses**: [COLMAP](https://colmap.github.io) (`pycolmap`) with sequential matching + loop detection — best quality. Mapping runs on [GLOMAP](https://lpanaf.github.io/eccv24_glomap/)'s global solver, which is 1.2–2.0x faster than incremental mapping, with an automatic quality-gated fallback to the incremental mapper (see [Pose mapper](#pose-mapper)). Optional experimental backend: [Depth Anything 3](https://github.com/ByteDance-Seed/Depth-Anything-3) running on Apple's MPS — much faster, slightly lower fidelity.
 - **Training**: [Brush](https://github.com/ArthurBrussee/brush) — a Rust/Metal Gaussian-splat trainer that matches CUDA gsplat quality (MCMC densification, Mip-Splatting antialiasing, optional LPIPS loss). It exports `.ply` checkpoints throughout training, which the UI streams into a live [Spark](https://sparkjs.dev) viewer.
 - **Everything runs on your Mac.** No cloud, no CUDA.
 
@@ -66,6 +66,35 @@ Upload a video, pick a preset, watch it build. Presets:
 <sub>¹ Preview and Max are extrapolated from that run (training holds a steady ~22 steps/s across resolutions), not yet measured end to end.</sub>
 
 **Pose time varies a lot with the scene.** COLMAP scales superlinearly with frame count and how hard the footage is to match — two runs here took 2 m 18 s at 166 frames and 10 m 1 s at 201 frames. Training time, by contrast, is predictable: it tracks step count almost exactly.
+
+### Pose mapper
+
+Mapping is the expensive part of the pose stage — 80% of it at 165 frames, 71% at 200. It runs
+GLOMAP's global solver by default, then checks the result and automatically falls back to the
+incremental mapper if it does not hold up. Measured on an M5 Pro, one paired run per scene, same
+frames and identical feature settings, whole pose stage end to end:
+
+| Frames | Incremental | GLOMAP + gate | Speedup | Mapping step alone |
+|--------|-------------|---------------|---------|--------------------|
+| 165    | 2 m 55 s    | **1 m 47 s**  | 1.64x   | 139.8 s → 70.6 s (1.98x) |
+| 200    | 7 m 32 s    | **6 m 11 s**  | 1.22x   | 320.6 s → 238.9 s (1.34x) |
+
+How much you save depends on the scene: the global solver's cost grows much more slowly than the
+incremental one's, but so does the share of the stage it can address — feature extraction and
+matching are untouched, and on the 200-frame scene they are already 28% of the total.
+
+The gate exists because pose error is the one error training cannot recover from — no number of
+steps fixes a blurred, ghosted scene — and global SfM is weakest exactly where this project
+lives: low-parallax forward motion. Registering every frame is not enough evidence on its own,
+so the gate also checks reprojection error, track length, observations per image, that the
+recovered focal length is physically plausible, and that consecutive camera centres trace a
+smooth path rather than jumping off it.
+
+```bash
+SPLAT_MAPPER=incremental ./run.sh   # off: incremental mapper only, exactly as before
+SPLAT_MAPPER=glomap      ./run.sh   # forced: global mapper, fail instead of falling back
+SPLAT_MAPPER=auto        ./run.sh   # default: global mapper, gated, auto-fallback
+```
 
 ## Capture tips (quality lives and dies here)
 
