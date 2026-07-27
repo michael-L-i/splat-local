@@ -72,7 +72,9 @@ export function createViewer(canvas) {
   const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 1000);
   camera.position.set(2.2, 1.4, 3.2);
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  // No MSAA: splats are alpha-blended point sprites with no geometric edges for
+  // multisampling to resolve, so it buys nothing and costs bandwidth everywhere.
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   scene.add(new SparkRenderer({ renderer })); // required for SplatMesh to draw
 
