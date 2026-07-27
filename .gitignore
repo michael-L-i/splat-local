@@ -9,4 +9,7 @@ vendor/brush_src/
 *.ply
 *.spz
 *.sog
+# ...except the demo scenes published to GitHub Pages.
+!site/scenes/*.sog
+!site/scenes/*.spz
 .playwright-mcp/

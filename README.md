@@ -23,7 +23,7 @@ Turn a video walkthrough into a 3D Gaussian Splat and watch the scene resolve ou
 </tr>
 </table>
 
-<sub>An 11 s phone-style walkthrough → a splat you can fly through with WASD/arrow keys. Reconstructed end-to-end in ~25 min on an M5 Pro MacBook — 165 frames, COLMAP poses, 30k training steps. Footage: [Pexels #7578547](https://www.pexels.com/video/video-of-a-house-interior-7578547/) (free license).</sub>
+<sub>An 11 s phone-style walkthrough → a splat you can fly through with WASD/arrow keys. Reconstructed end-to-end in under 25 min on an M5 Pro MacBook — 166 frames, COLMAP poses, 30k training steps. Footage: [Pexels #7578547](https://www.pexels.com/video/video-of-a-house-interior-7578547/) (free license).</sub>
 
 ## Why
 
@@ -53,11 +53,19 @@ video ──▶ sharp frames ──▶ camera poses ──▶ splat training ─
 
 Upload a video, pick a preset, watch it build. Presets:
 
-| Preset  | Frames | Steps | Approx. time (M-series Pro) |
-|---------|--------|-------|------------------------------|
-| Preview | 100    | 10k   | ~20–30 min                   |
-| High    | 200    | 30k   | ~2–3 h                       |
-| Max     | 250    | 45k   | ~4 h                         |
+| Preset  | Frames | Res  | Steps | Poses    | Training | Total          |
+|---------|--------|------|-------|----------|----------|----------------|
+| Preview | 100    | 1536 | 10k   | ~1 min   | ~7 min   | **~8 min** ¹   |
+| High    | 200    | 2048 | 30k   | 2–10 min | ~22 min  | **~25 min** ²  |
+| Max     | 250    | 2560 | 45k   | 10–20 min| ~50 min  | **~1–1.5 h** ¹ |
+
+<sub>Measured on an M5 Pro MacBook Pro (18-core, 48 GB unified memory).</sub>
+
+<sub>² **High is measured end to end**: 166 frames at 2048 px, 30k steps → 11 s frame selection + 2 m 18 s COLMAP + 22 m 10 s training = **24 m 42 s**. This is the run in the demo GIFs above.</sub>
+
+<sub>¹ Preview and Max are extrapolated from that run (training holds a steady ~22 steps/s across resolutions), not yet measured end to end.</sub>
+
+**Pose time varies a lot with the scene.** COLMAP scales superlinearly with frame count and how hard the footage is to match — two runs here took 2 m 18 s at 166 frames and 10 m 1 s at 201 frames. Training time, by contrast, is predictable: it tracks step count almost exactly.
 
 ## Capture tips (quality lives and dies here)
 

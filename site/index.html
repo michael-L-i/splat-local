@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Splat Local — video to 3D Gaussian Splat, entirely on your Mac</title>
+<meta name="description" content="Turn a video walkthrough into a 3D Gaussian Splat on your own Mac. No cloud, no CUDA, nothing uploaded. Fly through a real reconstruction in your browser." />
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="./assets/style.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.min.js",
+    "three/addons/postprocessing/Pass.js": "./vendor/three/Pass.js",
+    "@sparkjsdev/spark": "./vendor/spark/spark.module.min.js"
+  }
+}
+</script>
+</head>
+<body class="fixed">
+  <header class="topbar">
+    <a class="wordmark" href="./">SPLAT<span class="arrow">&rarr;</span>LOCAL</a>
+    <nav class="topnav">
+      <a href="./viewer.html">Splat viewer</a>
+      <a href="https://github.com/michael-L-i/splat-local">GitHub</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <section class="hero-copy">
+      <div>
+        <p class="eyebrow" style="margin:0 0 10px">Runs entirely on your Mac</p>
+        <h1>Walk through a space once.<br />Get a 3D scene you can <em>fly through forever</em>.</h1>
+      </div>
+
+      <p class="lede">
+        That's a real reconstruction &mdash; an <b>11-second phone-style walkthrough</b>
+        turned into a 3D Gaussian Splat. No cloud, no CUDA, nothing uploaded.
+        Drag to orbit, or use <b>WASD</b> and the <b>arrow keys</b> to fly.
+      </p>
+
+      <div class="spec-grid">
+        <div class="spec">
+          <div class="k">Time to scene</div>
+          <div class="v">24<small>m</small> 42<small>s</small></div>
+        </div>
+        <div class="spec">
+          <div class="k">Measured on</div>
+          <div class="v">M5 Pro <small>48 GB</small></div>
+        </div>
+        <div class="spec">
+          <div class="k">Uploaded</div>
+          <div class="v">nothing</div>
+        </div>
+        <div class="spec">
+          <div class="k">Exports</div>
+          <div class="v">ply <small>· spz · sog</small></div>
+        </div>
+      </div>
+
+      <div class="pipeline">
+        <p class="eyebrow" style="margin:0 0 2px">How it works</p>
+        <div class="pipe-row"><span class="n">01</span><span class="t">sharp frames</span><span class="d">ffmpeg + sharp-frames</span></div>
+        <div class="pipe-row"><span class="n">02</span><span class="t">camera poses</span><span class="d">COLMAP, or Depth Anything 3 on MPS</span></div>
+        <div class="pipe-row"><span class="n">03</span><span class="t">splat training</span><span class="d">Brush &mdash; Metal-native 3DGS</span></div>
+        <div class="pipe-row"><span class="n">04</span><span class="t">cleanup + export</span><span class="d">splat-transform</span></div>
+      </div>
+
+      <p class="lede" style="font-size:13.5px">
+        Training checkpoints stream straight into the viewer while it runs, so you
+        watch the scene sharpen out of the fog instead of staring at a progress bar.
+      </p>
+
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/michael-L-i/splat-local">Get it on GitHub</a>
+        <a class="btn" href="./viewer.html">Open your own splat &rarr;</a>
+        <p class="fineprint">
+          Apple Silicon · Python 3.12 · MIT licensed.<br />
+          Demo footage: Pexels #7578547 (free license). 166 frames, COLMAP poses, 30k steps.
+        </p>
+      </div>
+    </section>
+
+    <section class="hero-stage" id="stage">
+      <canvas id="canvas"></canvas>
+      <div class="stage-badge"><b>home walkthrough</b> &mdash; 135,575 splats</div>
+      <div class="nav-hint">drag orbit · scroll zoom · WASD move · &larr;&rarr; turn · &uarr;&darr; look</div>
+      <div class="loading-veil" id="veil">
+        <span id="veilLabel">loading scene</span>
+        <div class="veil-track"><div class="veil-fill" id="veilFill"></div></div>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="./assets/landing.js"></script>
+</body>
+</html>
