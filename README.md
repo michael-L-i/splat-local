@@ -73,6 +73,29 @@ Upload a video, pick a preset, watch it build. Presets:
 - Lock exposure/white balance if you can; 4K 60 fps gives the frame picker more sharp frames.
 - Avoid moving subjects, whip pans, and textureless walls/sky-only shots.
 
+## Measuring quality (dev)
+
+Speed knobs — resolution, SH degree, mip — are easy to measure. Quality isn't, so `scripts/eval.py`
+holds out every 8th frame from training and scores the reconstruction against it:
+
+```bash
+scripts/eval.py --dataset jobs/<id>/dataset --config high --config res1536   # ~45 min at 30k steps
+scripts/eval.py --dataset jobs/<id>/dataset --config res1024 --steps 1000    # ~1 min smoke run
+```
+
+```
+config   PSNR   SSIM    PSNR@train  steps/s  wall  splats  render
+res1024  30.12  0.9523  30.04       111.1    9s    27,360  1024x567
+res1536  29.96  0.9537  29.85       66.7     15s   27,055  1536x850
+high     29.84  0.9529  29.71       43.5     23s   26,648  2048x1133
+```
+
+Brush evaluates at the *training* resolution, so its own PSNR (the `PSNR@train` column) is not
+comparable across resolutions — a 1536 px run is being marked against a smaller, easier target.
+The `PSNR`/`SSIM` columns resample both render and ground truth to one fixed reference resolution
+(`--ref-res`, default 2048) first, so a run that skipped detail pays for it. Results land in
+`jobs/_eval/` as JSON plus the table above.
+
 ## Notes
 
 - Optional DA3 pose backend: `uv sync --group da3` (Python 3.12 venv, installs PyTorch). Uses `depth-anything/DA3-LARGE` by default; override with `DA3_MODEL=depth-anything/DA3-SMALL ./run.sh` for speed.
@@ -81,4 +104,4 @@ Upload a video, pick a preset, watch it build. Presets:
 
 ## Layout
 
-`server/` FastAPI + pipeline stages · `web/` vanilla-JS UI + Spark viewer · `vendor/` Brush binary + viewer libs · `jobs/` per-run work dirs (gitignored) · `docs/api.md` API contract
+`server/` FastAPI + pipeline stages · `web/` vanilla-JS UI + Spark viewer · `vendor/` Brush binary + viewer libs · `scripts/` dev tooling (held-out eval harness) · `jobs/` per-run work dirs (gitignored) · `docs/api.md` API contract

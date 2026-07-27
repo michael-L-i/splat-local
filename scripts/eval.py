@@ -349,7 +349,9 @@ def main() -> int:
     n_eval = len(range(0, n_images, args.eval_split_every))
     n_train = n_images - n_eval
 
-    out_root = args.out or _PROJECT_ROOT / "jobs" / "_eval" / time.strftime("%Y%m%d-%H%M%S")
+    # Absolute: Brush resolves a relative --export-path against the dataset's parent dir.
+    out_root = (args.out or _PROJECT_ROOT / "jobs" / "_eval" / time.strftime("%Y%m%d-%H%M%S"))
+    out_root = out_root.resolve()
     out_root.mkdir(parents=True, exist_ok=True)
 
     bin_path = _resolve_bin()
