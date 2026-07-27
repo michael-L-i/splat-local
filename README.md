@@ -10,7 +10,7 @@
   <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
 
-Turn a video walkthrough into a 3D Gaussian Splat and watch the scene resolve out of the fog, live, in your browser — no cloud, no CUDA, nothing leaves your Mac. Downloads as `.ply` (plus `.spz` / `.sog` when available).
+Turn a video walkthrough into a 3D Gaussian Splat and watch the scene resolve out of the fog, live, in your browser — no cloud, no CUDA, nothing leaves your Mac. Downloads as a full-resolution `.ply` (plus `.spz` when available).
 
 <table>
 <tr>
@@ -34,14 +34,15 @@ Turn a video walkthrough into a 3D Gaussian Splat and watch the scene resolve ou
 ## How it works
 
 ```
-video ──▶ sharp frames ──▶ camera poses ──▶ splat training ──▶ cleanup/export
+video ──▶ sharp frames ──▶ camera poses ──▶ splat training ──▶ export
           (ffmpeg +        (COLMAP, or       (Brush: Metal-      (splat-transform:
-           sharp-frames)    Depth Anything 3  native 3DGS w/      floater removal,
-                            on MPS)           MCMC + mip AA)      .ply/.spz/.sog)
+           sharp-frames)    Depth Anything 3  native 3DGS w/      .ply/.spz archive
+                            on MPS)           MCMC + mip AA)      + .sog for the viewer)
 ```
 
 - **Poses**: [COLMAP](https://colmap.github.io) (`pycolmap`) with sequential matching + loop detection — best quality. Optional experimental backend: [Depth Anything 3](https://github.com/ByteDance-Seed/Depth-Anything-3) running on Apple's MPS — much faster, slightly lower fidelity.
 - **Training**: [Brush](https://github.com/ArthurBrussee/brush) — a Rust/Metal Gaussian-splat trainer that matches CUDA gsplat quality (MCMC densification, Mip-Splatting antialiasing, optional LPIPS loss). It exports `.ply` checkpoints throughout training, which the UI streams into a live [Spark](https://sparkjs.dev) viewer.
+- **Export**: two artifact families, split on purpose. The **archive** you download (`scene.ply`, `scene.spz`) is full resolution with SH3 and only NaN/degenerate gaussians dropped — no quality decisions applied. The **view** artifact (`scene-view.sog`) is the same scene with near-transparent splats filtered out and Morton-reordered, which is what the browser loads. Half the splats in a typical scene are nearly invisible but still cost fill rate, so filtering them cuts overdraw ~22% without touching what you keep.
 - **Everything runs on your Mac.** No cloud, no CUDA.
 
 ## Quickstart
@@ -76,7 +77,7 @@ Upload a video, pick a preset, watch it build. Presets:
 ## Notes
 
 - Optional DA3 pose backend: `uv sync --group da3` (Python 3.12 venv, installs PyTorch). Uses `depth-anything/DA3-LARGE` by default; override with `DA3_MODEL=depth-anything/DA3-SMALL ./run.sh` for speed.
-- Optional `.spz`/`.sog` export + floater cleanup uses `npx @playcanvas/splat-transform` (needs Node).
+- Optional `.spz` archive + `.sog` viewer export uses `npx @playcanvas/splat-transform` (needs Node). Without it you still get the raw `scene.ply`.
 - Why not LingBot-World? It's an image→video *world generator* (28B params, CUDA-only, no 3D output) — the wrong tool for video→3D reconstruction, and it can't run on a Mac. This project uses the reconstruction stack that modern world-model papers themselves use for geometry.
 
 ## Layout
