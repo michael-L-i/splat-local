@@ -10,6 +10,15 @@ from ..pipeline import JobCancelled
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _STEP_RE = re.compile(r"(\d+)\s*/\s*(\d+)")
 
+# Progressive resolution. Brush trains on downscaled frames while densification is
+# running and ramps back to full resolution by growth_stop, where the extra pixels
+# start to pay. Off by default: on the `high` preset it buys 1.24x wall-clock for
+# -0.24 dB held-out PSNR, and the noise floor here is 0.15 dB, so the cost is real.
+# SPLAT_PROGRESSIVE_RES=on takes that trade; a percentage sets the ramp's floor.
+# Only the fork build understands the flag — a stock Brush just doesn't get it.
+PROGRESSIVE_ENV = "SPLAT_PROGRESSIVE_RES"
+PROGRESSIVE_START_PCT = 50
+
 
 def _resolve_bin() -> str:
     env = os.environ.get("BRUSH_BIN")
@@ -19,6 +28,16 @@ def _resolve_bin() -> str:
     if main_build.exists():
         return str(main_build)
     return str(_PROJECT_ROOT / "vendor" / "brush")
+
+
+def _progressive_start_pct() -> int:
+    """Resolution the progressive ramp starts at, as a percentage of full. 100 = off."""
+    raw = os.environ.get(PROGRESSIVE_ENV, "").strip().lower()
+    if raw in ("on", "true", "yes"):
+        return PROGRESSIVE_START_PCT
+    if raw.isdigit() and 1 <= int(raw) <= 100:
+        return int(raw)
+    return 100
 
 
 def _reader_thread(pipe, q: "queue.Queue[str | None]"):
@@ -39,6 +58,7 @@ def run(job, work: Path, preset):
     ).stdout
     steps_flag = "--total-train-iters" if "--total-train-iters" in help_text else "--total-steps"
     supports_mip = "--render-mode" in help_text
+    supports_progressive = "--progressive-resolution-start" in help_text
 
     args = [
         bin_path, str(dataset_dir),
@@ -56,6 +76,9 @@ def run(job, work: Path, preset):
         args += ["--lpips-loss-weight", str(preset.lpips_weight)]
     if supports_mip:
         args += ["--render-mode", "mip"]
+    progressive_start = _progressive_start_pct()
+    if supports_progressive and progressive_start < 100:
+        args += ["--progressive-resolution-start", str(progressive_start)]
 
     job.update(message="training splats", progress=0.0)
 
