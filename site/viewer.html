@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Splat viewer — Splat Local</title>
+<meta name="description" content="Drop a .ply, .spz, .sog, .splat or .ksplat file and fly through it. Runs entirely in your browser; nothing is uploaded." />
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="./assets/style.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.min.js",
+    "three/addons/postprocessing/Pass.js": "./vendor/three/Pass.js",
+    "@sparkjsdev/spark": "./vendor/spark/spark.module.min.js"
+  }
+}
+</script>
+</head>
+<body class="fixed">
+  <header class="topbar">
+    <a class="wordmark" href="./">SPLAT<span class="arrow">&rarr;</span>LOCAL</a>
+    <div class="status-pill"><span class="dot" id="statusDot"></span><span id="statusText">IDLE</span></div>
+  </header>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <div>
+        <p class="eyebrow" style="margin:0 0 6px">Local splat viewer</p>
+        <h2 class="panel-title">Open a splat</h2>
+      </div>
+
+      <div class="dropzone" id="dropzone" tabindex="0" role="button"
+           aria-label="Choose a splat file, or drop one here">
+        <div class="glyph">&#9679;</div>
+        <div class="hint">Drop a splat file, or click to choose</div>
+        <div class="sub">.ply · .spz · .sog · .splat · .ksplat</div>
+      </div>
+
+      <div class="artifact" id="fileRow" hidden>
+        <div>
+          <div class="name" id="fileName">—</div>
+          <div class="size" id="fileSize">—</div>
+        </div>
+        <button class="btn" id="clearBtn" style="padding:6px 10px;font-size:10px">Clear</button>
+      </div>
+
+      <div class="progress-track" id="progressTrack" hidden><div class="progress-fill" id="progressFill"></div></div>
+      <p class="status-msg" id="statusMsg">Nothing loaded yet.</p>
+      <p class="inline-msg" id="errorMsg"></p>
+
+      <hr class="hr" />
+
+      <div class="field">
+        <label>Don't have one?</label>
+        <button class="btn" id="demoBtn">Load the demo scene</button>
+      </div>
+
+      <p class="center-note">
+        Everything here runs in your browser &mdash; the file never leaves your
+        machine and nothing is uploaded.
+      </p>
+
+      <div style="margin-top:auto;display:flex;flex-direction:column;gap:9px">
+        <a class="btn btn-primary" href="https://github.com/michael-L-i/splat-local">Make your own &rarr;</a>
+        <p class="fineprint">
+          Splat Local turns a video walkthrough into a scene like this in about
+          25 minutes, entirely on an Apple Silicon Mac.
+        </p>
+      </div>
+    </aside>
+
+    <main class="viewport" id="viewport">
+      <canvas id="canvas"></canvas>
+      <div class="viewport-hud" id="hud"></div>
+      <div class="nav-hint">drag orbit · scroll zoom · WASD move · &larr;&rarr; turn · &uarr;&darr; look</div>
+    </main>
+  </div>
+
+  <input type="file" id="fileInput" accept=".ply,.spz,.sog,.splat,.ksplat,.rad" hidden />
+  <script type="module" src="./assets/viewer-page.js"></script>
+</body>
+</html>
