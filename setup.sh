@@ -13,11 +13,18 @@ need uv || { say "Installing uv"; brew install uv; }
 say "Syncing Python environment (fastapi, pycolmap, sharp-frames...)"
 uv sync
 
-# Brush splat trainer: prefer a from-source build (newer quality flags), else prebuilt release.
+# Brush splat trainer. Built from our fork, which adds the progressive-resolution
+# schedule (--progressive-resolution-start); everything else tracks upstream.
+# Point these at ArthurBrussee/brush + main for a stock build — the pipeline
+# probes --help and simply skips the flag when the binary lacks it.
+BRUSH_REPO="${BRUSH_REPO:-https://github.com/michael-L-i/brush}"
+BRUSH_REF="${BRUSH_REF:-progressive-resolution}"
+
 if [[ ! -x vendor/brush_src/target/release/brush && ! -x vendor/brush ]]; then
   if need cargo; then
     say "Building Brush from source (one-time, ~5-10 min)"
-    [[ -d vendor/brush_src ]] || git clone --depth 1 https://github.com/ArthurBrussee/brush vendor/brush_src
+    [[ -d vendor/brush_src ]] ||
+      git clone --depth 1 --branch "$BRUSH_REF" "$BRUSH_REPO" vendor/brush_src
     (cd vendor/brush_src && cargo build --release -p brush-app) || true
   fi
   if [[ ! -x vendor/brush_src/target/release/brush ]]; then
