@@ -73,8 +73,6 @@ export function createViewer(canvas) {
   const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 1000);
   camera.position.set(2.2, 1.4, 3.2);
 
-  // No MSAA: splats are alpha-blended point sprites with no geometric edges for
-  // multisampling to resolve, so it buys nothing and costs bandwidth everywhere.
   // --- level of detail -------------------------------------------------------
   // Spark ships a full LOD implementation but only uses it when a SplatMesh is
   // constructed with `lod`; otherwise every splat is drawn every frame. With it
@@ -88,6 +86,8 @@ export function createViewer(canvas) {
   const MOBILE = window.matchMedia?.("(pointer: coarse)").matches ?? false;
   const LOD_SPLAT_COUNT = MOBILE ? 4e5 : 1.5e6; // per-frame splat budget
 
+  // No MSAA: splats are alpha-blended point sprites with no geometric edges for
+  // multisampling to resolve, so it buys nothing and costs bandwidth everywhere.
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
   // SparkRenderer is required for SplatMesh to draw at all.
   scene.add(new SparkRenderer({ renderer, lodSplatCount: LOD_SPLAT_COUNT }));
