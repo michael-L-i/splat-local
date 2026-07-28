@@ -85,26 +85,26 @@ export function createRig(canvas, { idleSpin = false } = {}) {
   // SparkRenderer is required for SplatMesh to draw at all.
   scene.add(new SparkRenderer({ renderer, lodSplatCount: LOD_SPLAT_COUNT }));
 
-  // --- adaptive resolution ---------------------------------------------------
-  // Rendering is fragment-bound, not splat-bound: every pixel blends dozens of
-  // near-transparent splats, so cost tracks the pixel count almost linearly.
-  // Keep the ceiling well below 2x, render at 1x while the camera is in motion,
-  // and restore the ceiling once it settles. Sharpness only drops while it
-  // isn't perceptible.
-  const DPR_STILL = Math.min(window.devicePixelRatio || 1, 1.5);
-  const DPR_MOVING = Math.min(DPR_STILL, 1);
-  const SETTLE_MS = 200;
-  let pixelRatio = DPR_STILL, pointerDown = false, lastMotion = -Infinity;
-  const _prevPos = new THREE.Vector3(), _prevTarget = new THREE.Vector3();
-  renderer.setPixelRatio(pixelRatio);
+  // --- resolution ------------------------------------------------------------
+  // Full device resolution, always. Rendering is fragment-bound rather than
+  // splat-bound — every pixel blends dozens of near-transparent splats — so
+  // this is the single largest lever on GPU cost, and for a while it was turned
+  // down: 1.5x at rest, 1x while the camera moved.
+  //
+  // Measured on an M5 Pro (Metal) at a 1728x1117 viewport, orbiting inside the
+  // 135,575-splat demo scene, one frame costs 1.39 ms at 1x, 4.04 ms at 1.5x
+  // and 7.19 ms at 2x — linear in pixel count, and all three hold 120 fps with
+  // budget to spare. Softening the image while touring bought headroom nothing
+  // was asking for, and touring is exactly when the scene is being looked at.
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
   controls.target.set(0, 0, 0);
 
-  // Scene scale, set by whichever framing the front end uses. Drives fly speed,
-  // the motion threshold below, and the front ends' own point/frustum sizing.
+  // Scene scale, set by whichever framing the front end uses. Drives fly speed
+  // and the front ends' own point/frustum sizing.
   let radius = DEFAULT_RADIUS;
   let spinning = idleSpin;
   let swayT = 0;
@@ -127,10 +127,9 @@ export function createRig(canvas, { idleSpin = false } = {}) {
   window.addEventListener("keyup", (e) => keys.delete(normKey(e)));
   window.addEventListener("blur", () => keys.clear());
 
-  canvas.addEventListener("pointerdown", () => { pointerDown = true; spinning = false; }, { passive: true });
-  window.addEventListener("pointerup", () => { pointerDown = false; }, { passive: true });
-  window.addEventListener("pointercancel", () => { pointerDown = false; }, { passive: true });
-  canvas.addEventListener("wheel", () => { lastMotion = performance.now(); spinning = false; }, { passive: true });
+  // Any deliberate input ends the landing page's idle sway for good.
+  canvas.addEventListener("pointerdown", () => { spinning = false; }, { passive: true });
+  canvas.addEventListener("wheel", () => { spinning = false; }, { passive: true });
 
   const _dir = new THREE.Vector3(), _right = new THREE.Vector3(),
         _move = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
@@ -174,23 +173,6 @@ export function createRig(canvas, { idleSpin = false } = {}) {
   new ResizeObserver(resize).observe(canvas.parentElement);
   resize();
 
-  function applyPixelRatio(r) {
-    if (r === pixelRatio) return;
-    pixelRatio = r;
-    renderer.setPixelRatio(r);
-    resize(); // re-size the drawing buffer for the new ratio
-  }
-
-  function updatePixelRatio(now) {
-    // Key/pointer state alone isn't enough: OrbitControls damping keeps nudging
-    // the camera for a while after the input ends, so watch the pose too.
-    const eps = Math.max(radius, 1e-3) * 1e-4;
-    const moved = camera.position.distanceTo(_prevPos) > eps
-      || controls.target.distanceTo(_prevTarget) > eps;
-    if (moved || pointerDown || keys.size) lastMotion = now;
-    applyPixelRatio(now - lastMotion < SETTLE_MS ? DPR_MOVING : DPR_STILL);
-  }
-
   function idleSway(dt) {
     // Sway, don't orbit. A continuous orbit drifts off the framing the front end
     // picked and ends up staring at a wall; this stays within a few degrees of
@@ -209,14 +191,8 @@ export function createRig(canvas, { idleSpin = false } = {}) {
     lastT = now;
     for (const hook of frameHooks) hook(dt);
     if (spinning) idleSway(dt);
-    // Record the pose *after* the idle sway, deliberately: the sway is slow
-    // enough that softening the resolution for it would be visible, and it is
-    // the landing page's resting state.
-    _prevPos.copy(camera.position);
-    _prevTarget.copy(controls.target);
     updateNav(dt);
     controls.update();
-    updatePixelRatio(now);
     renderer.render(scene, camera);
   })();
 
