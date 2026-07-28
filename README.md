@@ -25,6 +25,8 @@ Turn a video walkthrough into a 3D Gaussian Splat and watch the scene resolve ou
 
 <sub>An 11 s phone-style walkthrough → a splat you can fly through with WASD/arrow keys. Reconstructed end-to-end in under 25 min on an M5 Pro MacBook — 166 frames, COLMAP poses, 30k training steps. Footage: [Pexels #7578547](https://www.pexels.com/video/video-of-a-house-interior-7578547/) (free license).</sub>
 
+**[Fly through that scene in your browser →](https://michael-l-i.github.io/splat-local/)** — the same viewer this app ships, running on the reconstruction above. It also [opens your own splat files](https://michael-l-i.github.io/splat-local/viewer.html) (`.ply`, `.spz`, `.sog`, `.splat`, `.ksplat`), locally.
+
 ## Why
 
 - **Actually local.** Poses, training, and the viewer all run on your machine — nothing uploaded, no API keys, no CUDA required.
@@ -106,4 +108,12 @@ Why the gate exists, what it checks, and the held-out-view PSNR behind the defau
 
 ## Layout
 
-`server/` FastAPI + pipeline stages · `web/` vanilla-JS UI + Spark viewer · `vendor/` Brush binary + viewer libs · `jobs/` per-run work dirs (gitignored) · `docs/api.md` API contract
+| | |
+|---|---|
+| `server/` | FastAPI app and the four pipeline stages |
+| `viewer/` | the Spark/three.js viewer engine, shared by the app and the demo site |
+| `web/` | the app's vanilla-JS UI |
+| `site/` | the [demo site](https://michael-l-i.github.io/splat-local/); `site/build.sh` assembles it into `_site/` |
+| `vendor/` | Brush binary, three.js and Spark builds |
+| `jobs/` | per-run work dirs (gitignored) |
+| `docs/` | [API contract](docs/api.md), [pose mapper A/B](docs/pose-mapper.md) |
