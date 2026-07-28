@@ -72,8 +72,7 @@ Upload a video, pick a preset, watch it build. Presets:
 
 Mapping is the expensive part of the pose stage — 80% of it at 165 frames, 71% at 200. It runs
 GLOMAP's global solver by default, then checks the result and automatically falls back to the
-incremental mapper if it does not hold up. Measured on an M5 Pro, one paired run per scene, same
-frames and identical feature settings, whole pose stage end to end:
+incremental mapper if it does not hold up:
 
 | Frames | Incremental | GLOMAP + gate | Speedup | Mapping step alone |
 |--------|-------------|---------------|---------|--------------------|
@@ -84,18 +83,14 @@ How much you save depends on the scene: the global solver's cost grows much more
 incremental one's, but so does the share of the stage it can address — feature extraction and
 matching are untouched, and on the 200-frame scene they are already 28% of the total.
 
-The gate exists because pose error is the one error training cannot recover from — no number of
-steps fixes a blurred, ghosted scene — and global SfM is weakest exactly where this project
-lives: low-parallax forward motion. Registering every frame is not enough evidence on its own,
-so the gate also checks reprojection error, track length, observations per image, that the
-recovered focal length is physically plausible, and that consecutive camera centres trace a
-smooth path rather than jumping off it.
-
 ```bash
 SPLAT_MAPPER=incremental ./run.sh   # off: incremental mapper only, exactly as before
 SPLAT_MAPPER=glomap      ./run.sh   # forced: global mapper, fail instead of falling back
 SPLAT_MAPPER=auto        ./run.sh   # default: global mapper, gated, auto-fallback
 ```
+
+Why the gate exists, what it checks, and the held-out-view PSNR behind the default:
+[docs/pose-mapper.md](docs/pose-mapper.md).
 
 ## Capture tips (quality lives and dies here)
 

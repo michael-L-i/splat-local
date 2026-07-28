@@ -1,44 +1,11 @@
 """COLMAP pose backend: features -> matching -> mapping -> undistorted dataset.
 
 Mapping is the expensive step (80% of the stage at 165 frames, 71% at 200), so it runs GLOMAP's
-global solver and keeps the incremental mapper as an automatically-selected fallback. Measured
-on an M5 Pro, one paired run per scene, whole stage end to end:
+global solver, 1.2-2.0x faster, and keeps the incremental mapper as a fallback that _gate()
+selects automatically when the global solution does not hold up.
 
-    scene                frames  mapper       features  match  calib   map  undistort  total
-    934589be6407            165  incremental      24.6    8.1      -  139.8        2.1  174.6
-    934589be6407            165  glomap           25.8    8.2    4.7   65.9        2.0  106.6
-    0c33c4547894            200  incremental      95.4   30.1      -  320.6        6.0  452.1
-    0c33c4547894            200  glomap           95.3   30.4    4.1  234.8        6.0  370.6
-
-1.64x and 1.22x on the stage; 1.98x and 1.34x on mapping alone. The gap between those two pairs
-of numbers is the point: extraction and matching are untouched, and at 200 frames they are
-already 28% of the stage, so the stage-level win shrinks as scenes get harder to match.
-
-GLOMAP did not cost accuracy on either scene — it was slightly *better* on the pose-side metrics
-that do not depend on training at all (mean reprojection error 0.83 vs 0.95 px and 0.61 vs
-0.67 px), and it recovered a focal length within 0.7% and 0.05% of the incremental solution.
-
-Downstream, which is the only measure that matters: same frames, same trainer config, 30k steps,
-21 held-out views never trained on, normalised to 2048 px (`scripts/eval.py` from the eval
-harness).
-
-    poses                     PSNR    SSIM   splats
-    incremental (run 1)      35.18  0.9835  135,492
-    incremental (run 2)      35.99  0.9834  133,192
-    glomap      (run 1)      37.52  0.9840  129,212
-    glomap      (run 2)      36.10  0.9841  128,473
-
-Read the *spread*, not the means. Two pose solutions from the same mapper on the same frames
-differ by 0.81 dB (incremental) and 1.43 dB (glomap) — five to ten times the ~0.15 dB
-run-to-run training noise floor, because both mappers are RANSAC-seeded and nondeterministic.
-So the +1.22 dB mean gap in GLOMAP's favour is *not* a demonstrated win: at n=2 per arm the
-arms nearly touch (36.10 vs 35.99). What the data does support is the decision this gate needed
-— GLOMAP does not lose. Every global run scored at or above every incremental run, on a metric
-where pose error shows up directly as misregistered held-out renders.
-
-The wider lesson for anyone re-running this: a pose change cannot be evaluated against the
-training noise floor. Pose-solution variance dominates it by an order of magnitude, so a single
-A/B pair here is worth very little no matter how many training steps it gets.
+The measurements behind that default — timings, held-out PSNR, and why registering every frame
+is not evidence enough on its own — are in docs/pose-mapper.md.
 """
 import os
 import shutil

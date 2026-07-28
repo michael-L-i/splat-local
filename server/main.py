@@ -15,7 +15,10 @@ from .pipeline import Job
 
 app = FastAPI()
 
+# Every job this process has seen, running or finished, so its state and files
+# stay reachable after it ends. Which one is *running* is pipeline's to say.
 JOBS: dict[str, Job] = {}
+# Held only so the event loop cannot garbage-collect a running pipeline task.
 _background_tasks: set[asyncio.Task] = set()
 
 
@@ -35,11 +38,16 @@ async def create_job(
     if not pipeline.try_start(job):
         raise HTTPException(409, "a job is already running")
 
-    job.work.mkdir(parents=True, exist_ok=True)
-    ext = Path(video.filename or "input.mp4").suffix or ".mp4"
-    dest = job.work / f"input{ext}"
-    with dest.open("wb") as f:
-        shutil.copyfileobj(video.file, f)
+    # The slot is claimed but the job has not started, so nothing else can free
+    # it: an upload that dies here has to hand it back itself.
+    try:
+        job.work.mkdir(parents=True, exist_ok=True)
+        ext = Path(video.filename or "input.mp4").suffix or ".mp4"
+        with (job.work / f"input{ext}").open("wb") as f:
+            shutil.copyfileobj(video.file, f)
+    except Exception:
+        pipeline.release(job)
+        raise
 
     JOBS[job_id] = job
     task = asyncio.create_task(pipeline.start(job))
@@ -51,10 +59,8 @@ async def create_job(
 
 @app.get("/api/jobs/active")
 async def active_job():
-    for job_id, job in reversed(JOBS.items()):
-        if job.state["stage"] not in pipeline.TERMINAL_STAGES:
-            return {"job_id": job_id}
-    return {"job_id": None}
+    """The running job, if any — lets a fresh tab attach to a run in progress."""
+    return {"job_id": pipeline.active_job_id()}
 
 
 @app.get("/api/jobs/{job_id}")

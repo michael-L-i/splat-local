@@ -52,6 +52,11 @@ class Job:
         with self._lock:
             return dict(self.state), self.version
 
+    @property
+    def running(self) -> bool:
+        state, _ = self.snapshot()
+        return state["stage"] not in TERMINAL_STAGES
+
     def check_cancelled(self):
         if self.cancelled:
             raise JobCancelled()
@@ -101,21 +106,44 @@ def run_subprocess(
     return subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
 
 
+# One reconstruction at a time: the trainer wants the whole GPU. This slot is
+# the single source of truth for "is something running" — the job registry in
+# main.py only remembers finished jobs so their files stay reachable.
 _active_job: Job | None = None
 _active_lock = threading.Lock()
 
 
 def try_start(job: Job) -> bool:
-    """Register job as the active one; fails if another job is still running."""
+    """Claim the active slot for `job`; fails if another job is still running."""
     global _active_job
     with _active_lock:
-        if _active_job is not None and _active_job.state["stage"] not in TERMINAL_STAGES:
+        if _active_job is not None and _active_job.running:
             return False
         _active_job = job
         return True
 
 
+def release(job: Job) -> None:
+    """Hand the slot back for a job that claimed it but never ran.
+
+    Without this, a claim that fails before `start()` (an upload that dies
+    mid-copy, say) leaves the slot held by a job that will never reach a
+    terminal stage, and every later job is refused until the server restarts.
+    """
+    global _active_job
+    with _active_lock:
+        if _active_job is job:
+            _active_job = None
+
+
+def active_job_id() -> str | None:
+    job = _active_job
+    return job.id if job is not None and job.running else None
+
+
 def _run_sync(job: Job):
+    # Imported here, not at module scope: the stages import back from this
+    # module for run_subprocess and JobCancelled.
     from .stages import export as export_stage
     from .stages import frames as frames_stage
     from .stages import poses_colmap
