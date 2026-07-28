@@ -59,12 +59,12 @@ Upload a video, pick a preset, watch it build. Presets:
 | Preset  | Frames | Res  | Steps | Poses    | Training | Total          |
 |---------|--------|------|-------|----------|----------|----------------|
 | Preview | 100    | 1536 | 10k   | ~1 min   | ~7 min   | **~8 min** ¹   |
-| High    | 200    | 2048 | 30k   | 2–10 min | ~22 min  | **~25 min** ²  |
+| High    | 200    | 2048 | 18k   | 2–10 min | ~11 min  | **~14 min** ²  |
 | Max     | 250    | 2560 | 45k   | 10–20 min| ~50 min  | **~1–1.5 h** ¹ |
 
 <sub>Measured on an M5 Pro MacBook Pro (18-core, 48 GB unified memory).</sub>
 
-<sub>² **High is measured end to end**: 166 frames at 2048 px, 30k steps → 11 s frame selection + 2 m 18 s COLMAP + 22 m 10 s training = **24 m 42 s**. This is the run in the demo GIFs above.</sub>
+<sub>² **High is measured end to end**: 166 frames at 2048 px, 18k steps → 11 s frame selection + 2 m 18 s COLMAP + 10 m 53 s training = **13 m 22 s**. The demo GIFs above are from the same scene at the old 30k setting, which took 24 m 42 s — 30k was cut to 18k because held-out PSNR stops moving once densification stops, at no measurable quality cost ([docs/step-count.md](docs/step-count.md)).</sub>
 
 <sub>¹ Preview and Max are extrapolated from that run (training holds a steady ~22 steps/s across resolutions), not yet measured end to end.</sub>
 
@@ -116,4 +116,5 @@ Why the gate exists, what it checks, and the held-out-view PSNR behind the defau
 | `site/` | the [demo site](https://michael-l-i.github.io/splat-local/); `site/build.sh` assembles it into `_site/` |
 | `vendor/` | Brush binary, three.js and Spark builds |
 | `jobs/` | per-run work dirs (gitignored) |
-| `docs/` | [API contract](docs/api.md), [pose mapper A/B](docs/pose-mapper.md) |
+| `scripts/` | `eval.py` — held-out PSNR/SSIM harness, dev tooling only |
+| `docs/` | [API contract](docs/api.md), [pose mapper A/B](docs/pose-mapper.md), [step count](docs/step-count.md) |
