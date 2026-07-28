@@ -1,6 +1,6 @@
 // Landing page: stream the hero scene in with a real progress bar, then hand
 // it to the shared viewer.
-import { createViewer, FILE_TYPES } from "./viewer-core.js";
+import { createViewer, FILE_TYPES } from "./viewer.js";
 
 const SCENE_URL = "./scenes/home.sog";
 

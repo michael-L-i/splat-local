@@ -5,6 +5,9 @@ on:
     branches: [main, web-demo]
     paths:
       - "site/**"
+      - "viewer/**"
+      - "vendor/spark/**"
+      - "vendor/three/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -28,8 +31,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      # Pulls in the shared viewer engine and the vendored libs from the repo
+      # root; site/ alone is not a complete page.
+      - run: ./site/build.sh
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4

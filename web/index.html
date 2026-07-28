@@ -9,8 +9,10 @@
 {
   "imports": {
     "three": "/vendor/three/three.module.min.js",
+    "three/addons/controls/OrbitControls.js": "/vendor/three/OrbitControls.js",
     "three/addons/postprocessing/Pass.js": "/vendor/three/Pass.js",
-    "@sparkjsdev/spark": "/vendor/spark/spark.module.min.js"
+    "@sparkjsdev/spark": "/vendor/spark/spark.module.min.js",
+    "splat-viewer/": "/viewer/"
   }
 }
 </script>
@@ -279,7 +281,7 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="wordmark">VIDEO<span class="arrow">→</span>SPLAT</div>
+    <div class="wordmark">SPLAT<span class="arrow">→</span>LOCAL</div>
     <div class="status-pill"><span class="dot" id="statusDot"></span><span id="statusText">IDLE</span></div>
   </header>
 

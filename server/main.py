@@ -128,6 +128,9 @@ async def job_file(job_id: str, path: str):
 # of which the browser has any business fetching.
 app.mount("/vendor/spark", StaticFiles(directory="vendor/spark"), name="vendor_spark")
 app.mount("/vendor/three", StaticFiles(directory="vendor/three"), name="vendor_three")
+# The viewer engine web/ and site/ share; pages resolve it via the "splat-viewer/"
+# import map entry, so this path and the site's ./viewer/ can differ freely.
+app.mount("/viewer", StaticFiles(directory="viewer"), name="viewer")
 app.mount("/", StaticFiles(directory="web", html=True), name="web")
 
 

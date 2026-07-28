@@ -13,3 +13,4 @@ vendor/brush_src/
 !site/scenes/*.sog
 !site/scenes/*.spz
 .playwright-mcp/
+_site/

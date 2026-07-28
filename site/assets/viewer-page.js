@@ -1,6 +1,6 @@
 // Standalone splat viewer: drop a file, fly through it. Nothing is uploaded —
 // files are read straight into the page as blob URLs.
-import { createViewer, fileTypeFor, FILE_TYPES } from "./viewer-core.js";
+import { createViewer, fileTypeFor, FILE_TYPES } from "./viewer.js";
 
 const DEMO_URL = "./scenes/home.sog";
 

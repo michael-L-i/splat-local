@@ -65,7 +65,7 @@ function mountIdle() {
     <div class="field">
       <label>Preset</label>
       <select id="presetSelect">
-        <option value="preview">Preview — ~6 min</option>
+        <option value="preview">Preview — ~8 min</option>
         <option value="high" selected>High — ~25 min</option>
         <option value="max">Max — ~1-1.5 h</option>
       </select>
