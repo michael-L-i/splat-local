@@ -117,7 +117,11 @@ async def job_file(job_id: str, path: str):
     return FileResponse(target)
 
 
-app.mount("/vendor", StaticFiles(directory="vendor"), name="vendor")
+# Mount the two viewer libraries individually rather than all of vendor/: that
+# directory also holds the Brush source tree and its build output (~5 GB), none
+# of which the browser has any business fetching.
+app.mount("/vendor/spark", StaticFiles(directory="vendor/spark"), name="vendor_spark")
+app.mount("/vendor/three", StaticFiles(directory="vendor/three"), name="vendor_three")
 app.mount("/", StaticFiles(directory="web", html=True), name="web")
 
 
