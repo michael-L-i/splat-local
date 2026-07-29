@@ -30,7 +30,13 @@ PRESETS = {
     "high": Preset(
         frames=200,
         max_resolution=2048,
-        total_steps=30_000,
+        # 18k, not 30k: held-out PSNR stops moving once densification stops. Growth ends at
+        # 15k either way, and the 12k steps after it were buying nothing measurable — n=5 per
+        # arm puts the difference at +0.39 dB in 18k's favour, 95% CI [-0.16, +0.93], against
+        # 1.78x the training speed. Not a quality *gain*: the interval includes zero. The
+        # claim is that it is no worse, and 2x faster. See docs/step-count.md.
+        # growth_stop stays at 15k on purpose — it is the arm that was actually measured.
+        total_steps=18_000,
         growth_stop=15_000,
         max_splats=4_000_000,
         export_every=1000,
