@@ -49,6 +49,11 @@ async def create_job(
         pipeline.release(job)
         raise
 
+    # Published so any tab can show the footage next to the reconstruction —
+    # the one that uploaded still has the bytes, but a reload or a second tab
+    # only has the job id.
+    job.update(input_url=job.file_url(f"input{ext}"))
+
     JOBS[job_id] = job
     task = asyncio.create_task(pipeline.start(job))
     _background_tasks.add(task)

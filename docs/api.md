@@ -21,6 +21,7 @@ Every event is `event: state` with a full JSON job snapshot:
   "stage": "frames|poses|train|export|done|error|cancelled",
   "progress": 0.42,
   "message": "human-readable status line",
+  "input_url": "/api/jobs/abc123/files/input.mp4",
   "frames": {"count": 200, "sample": ["/api/jobs/abc123/files/frames/00001.jpg"]},
   "sparse_url": "/api/jobs/abc123/files/sparse.ply",
   "cameras": [{"position": [x,y,z], "rotation": [qw,qx,qy,qz]}],
@@ -29,6 +30,10 @@ Every event is `event: state` with a full JSON job snapshot:
   "error": null
 }
 ```
+
+`input_url` is the uploaded video, set as soon as the upload lands and served with range
+support so it can be scrubbed. The UI plays it beside the viewer for the whole run; the tab
+that did the upload uses its own blob instead, so this is for reloads and second tabs.
 
 Fields are null/absent until their stage produces them. `checkpoint` is what the viewer loads: the latest exported `.ply` during training, then `exports/scene-view.sog` once the export stage has built it (`step`/`total_steps` stay as they were).
 

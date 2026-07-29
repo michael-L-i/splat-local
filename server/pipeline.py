@@ -32,6 +32,7 @@ class Job:
             "stage": "frames",
             "progress": 0.0,
             "message": "queued",
+            "input_url": None,
             "frames": None,
             "sparse_url": None,
             "cameras": None,

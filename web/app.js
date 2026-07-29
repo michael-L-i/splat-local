@@ -17,6 +17,8 @@ const STAGE_LABEL = { frames: "Frames", poses: "Poses", train: "Train", export: 
 let jobId = null;
 let es = null;
 let selectedFile = null;
+let objectUrl = null; // blob URL for selectedFile; revoked when it is replaced or cleared
+let inputUrl = null; // the server's copy of the upload, for tabs that did not do the upload
 let currentPanel = null; // 'idle' | 'running' | 'done' | 'error'
 let els = {}; // cached refs into the currently-mounted panel
 let seenFrames = new Set();
@@ -33,6 +35,22 @@ function humanSize(bytes) {
   let n = bytes, u = 0;
   while (n >= 1024 && u < units.length - 1) { n /= 1024; u++; }
   return `${n.toFixed(u === 0 ? 0 : 1)} ${units[u]}`;
+}
+
+// Prefer the local blob: the tab that uploaded already holds the bytes, so there
+// is no reason to pull them back off the server. A reload or a second tab has
+// only the job id, and falls back to the copy the job wrote to disk.
+function videoSrc() {
+  return objectUrl || inputUrl;
+}
+
+function videoPlayerHTML(src, meta) {
+  return `
+    <div class="video-preview">
+      <video src="${src}" muted loop autoplay playsinline></video>
+    </div>
+    <div class="video-meta">${meta}</div>
+  `;
 }
 
 function setStatusPill(stage) {
@@ -108,24 +126,30 @@ function handleFile(file) {
     return;
   }
   els.startMsg.textContent = "";
+  if (objectUrl) URL.revokeObjectURL(objectUrl);
   selectedFile = file;
+  objectUrl = URL.createObjectURL(file);
   renderVideoPreview();
 }
 
 function renderVideoPreview() {
-  els.previewSlot.innerHTML = `
-    <div class="video-preview">
-      <video src="${URL.createObjectURL(selectedFile)}" muted loop autoplay playsinline></video>
-    </div>
-    <div class="video-meta"><span>${selectedFile.name} · ${humanSize(selectedFile.size)}</span><button id="clearBtn">remove</button></div>
-  `;
-  $("clearBtn").addEventListener("click", () => { selectedFile = null; els.previewSlot.innerHTML = ""; els.startBtn.disabled = true; });
+  els.previewSlot.innerHTML = videoPlayerHTML(
+    videoSrc(),
+    `<span>${selectedFile.name} · ${humanSize(selectedFile.size)}</span><button id="clearBtn">remove</button>`,
+  );
+  $("clearBtn").addEventListener("click", () => {
+    if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
+    selectedFile = null;
+    els.previewSlot.innerHTML = "";
+    els.startBtn.disabled = true;
+  });
   els.startBtn.disabled = false;
 }
 
 function mountRunning() {
   sidebar.innerHTML = `
     <div class="eyebrow">reconstruction in progress</div>
+    <div id="sourceSlot"></div>
     <div class="stage-tracker" id="stageTracker">
       ${STAGES.map((s) => `
         <div class="stage-row" data-stage="${s}">
@@ -141,6 +165,7 @@ function mountRunning() {
     <button class="btn btn-danger" id="cancelBtn">Cancel job</button>
   `;
   els = {
+    sourceSlot: $("sourceSlot"),
     tracker: $("stageTracker"),
     progressFill: $("progressFill"),
     statusMsg: $("statusMsg"),
@@ -179,7 +204,19 @@ function mountError() {
 }
 
 // ------------------------------------------------------------- updating ----
+// The footage stays on screen for the whole run, so the splat resolving in the
+// viewport can be read against what it was reconstructed from. Mounted once and
+// then left alone — rebuilding it on every state event would restart playback
+// twice a second.
+function renderSource() {
+  const src = videoSrc();
+  if (!src || !els.sourceSlot || els.sourceSlot.querySelector("video")) return;
+  els.sourceSlot.innerHTML = videoPlayerHTML(src, "<span>source footage</span>");
+}
+
 function updateRunning(state) {
+  renderSource();
+
   const idx = STAGES.indexOf(state.stage);
   els.tracker.querySelectorAll(".stage-row").forEach((row) => {
     const s = row.dataset.stage;
@@ -250,6 +287,7 @@ function updateViewer(state) {
 // --------------------------------------------------------------- driving ---
 function render(state) {
   setStatusPill(state.stage);
+  if (state.input_url) inputUrl = state.input_url;
   const panel = state.stage === "done" ? "done" : state.stage === "error" || state.stage === "cancelled" ? "error" : "running";
   if (panel !== currentPanel) mount(panel);
   if (panel === "running") updateRunning(state);
@@ -305,6 +343,8 @@ function resetToIdle() {
   if (es) { es.close(); es = null; }
   sessionStorage.removeItem("vts_job");
   jobId = null;
+  if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
+  inputUrl = null;
   selectedFile = null;
   seenFrames = new Set();
   lastSparseUrl = null;
