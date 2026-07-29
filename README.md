@@ -23,7 +23,7 @@ Turn a video walkthrough into a 3D Gaussian Splat and watch the scene resolve ou
 </tr>
 </table>
 
-<sub>An 11 s phone-style walkthrough → a splat you can fly through with WASD/arrow keys. 166 frames, COLMAP poses, 18k training steps — **13 m 22 s end to end** on an M5 Pro MacBook. (The GIFs themselves were rendered from an earlier 30k-step run of the same scene, before the step count was cut; the cut costs nothing measurable — see ² below.) Footage: [Pexels #7578547](https://www.pexels.com/video/video-of-a-house-interior-7578547/) (free license).</sub>
+<sub>An 11 s phone-style walkthrough → a splat you can fly through with a trackpad or WASD. 166 frames, COLMAP poses, 18k training steps — **13 m 22 s end to end** on an M5 Pro MacBook. (The GIFs themselves were rendered from an earlier 30k-step run of the same scene, before the step count was cut; the cut costs nothing measurable — see ² below.) Footage: [Pexels #7578547](https://www.pexels.com/video/video-of-a-house-interior-7578547/) (free license).</sub>
 
 **[Fly through that scene in your browser →](https://michael-l-i.github.io/splat-local/)** — the same viewer this app ships, running on the reconstruction above. It also [opens your own splat files](https://michael-l-i.github.io/splat-local/viewer.html) (`.ply`, `.spz`, `.sog`, `.splat`, `.ksplat`), locally.
 

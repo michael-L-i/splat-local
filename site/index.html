@@ -11,7 +11,6 @@
 {
   "imports": {
     "three": "./vendor/three/three.module.min.js",
-    "three/addons/controls/OrbitControls.js": "./vendor/three/OrbitControls.js",
     "three/addons/postprocessing/Pass.js": "./vendor/three/Pass.js",
     "@sparkjsdev/spark": "./vendor/spark/spark.module.min.js",
     "splat-viewer/": "./viewer/"
@@ -38,7 +37,7 @@
       <p class="lede">
         That's a real reconstruction &mdash; an <b>11-second phone-style walkthrough</b>
         turned into a 3D Gaussian Splat. No cloud, no CUDA, nothing uploaded.
-        Drag to orbit, or use <b>WASD</b> and the <b>arrow keys</b> to fly.
+        Drag to look, use two fingers to move, or fly with <b>WASD</b>.
       </p>
 
       <div class="spec-grid">
@@ -86,7 +85,7 @@
     <section class="hero-stage" id="stage">
       <canvas id="canvas"></canvas>
       <div class="stage-badge"><b>home walkthrough</b> &mdash; 135,575 splats</div>
-      <div class="nav-hint">drag orbit · scroll zoom · WASD move · &larr;&rarr; turn · &uarr;&darr; look</div>
+      <div class="nav-hint">drag look · two-finger move · WASD fly · arrows look</div>
       <div class="loading-veil" id="veil">
         <span id="veilLabel">loading scene</span>
         <div class="veil-track"><div class="veil-fill" id="veilFill"></div></div>

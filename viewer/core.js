@@ -11,8 +11,7 @@
 // nothing here resolves a path itself: the app serves it from /viewer/, the
 // static site from ./viewer/.
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { SparkRenderer } from "@sparkjsdev/spark";
+import { SparkControls, SparkRenderer } from "@sparkjsdev/spark";
 
 // Spark ships a full LOD implementation but only uses it when a SplatMesh is
 // constructed with `lod`; otherwise every splat is drawn every frame. With it
@@ -78,6 +77,7 @@ export function createRig(canvas, { idleSpin = false } = {}) {
 
   const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 1000);
   camera.position.copy(HOME_POSITION);
+  camera.lookAt(0, 0, 0);
 
   // No MSAA: splats are alpha-blended point sprites with no geometric edges for
   // multisampling to resolve, so it buys nothing and costs bandwidth everywhere.
@@ -98,69 +98,32 @@ export function createRig(canvas, { idleSpin = false } = {}) {
   // was asking for, and touring is exactly when the scene is being looked at.
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.08;
-  controls.target.set(0, 0, 0);
+  const controls = new SparkControls({ canvas: renderer.domElement });
+  controls.fpsMovement.keycodeMoveMapping = {
+    KeyW: new THREE.Vector3(0, 0, -1),
+    KeyS: new THREE.Vector3(0, 0, 1),
+    KeyA: new THREE.Vector3(-1, 0, 0),
+    KeyD: new THREE.Vector3(1, 0, 0),
+  };
+  controls.fpsMovement.rotateSpeed = 1;
+  controls.fpsMovement.keycodeRotateMapping = {
+    ArrowLeft: new THREE.Vector3(-1.5, 0, 0),
+    ArrowRight: new THREE.Vector3(1.5, 0, 0),
+    ArrowUp: new THREE.Vector3(0, -1.2, 0),
+    ArrowDown: new THREE.Vector3(0, 1.2, 0),
+  };
 
   // Scene scale, set by whichever framing the front end uses. Drives fly speed
   // and the front ends' own point/frustum sizing.
   let radius = DEFAULT_RADIUS;
+  controls.fpsMovement.moveSpeed = radius * 0.6;
   let spinning = idleSpin;
   let swayT = 0;
   const frameHooks = [];
 
-  // --- fly navigation: WASD move, arrows turn and look -----------------------
-  const NAV_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d"]);
-  const keys = new Set();
-  const normKey = (e) => (e.key.length === 1 ? e.key.toLowerCase() : e.key);
-
-  window.addEventListener("keydown", (e) => {
-    const k = normKey(e);
-    if (!NAV_KEYS.has(k) || e.metaKey || e.ctrlKey || e.altKey) return;
-    const t = document.activeElement;
-    if (t && /^(input|select|textarea|button)$/i.test(t.tagName)) return;
-    keys.add(k);
-    spinning = false;
-    e.preventDefault();
-  });
-  window.addEventListener("keyup", (e) => keys.delete(normKey(e)));
-  window.addEventListener("blur", () => keys.clear());
-
   // Any deliberate input ends the landing page's idle sway for good.
   canvas.addEventListener("pointerdown", () => { spinning = false; }, { passive: true });
   canvas.addEventListener("wheel", () => { spinning = false; }, { passive: true });
-
-  const _dir = new THREE.Vector3(), _right = new THREE.Vector3(),
-        _move = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
-
-  function updateNav(dt) {
-    if (!keys.size) return;
-    camera.getWorldDirection(_dir);
-    _right.crossVectors(_dir, _up).normalize();
-    _move.set(0, 0, 0);
-    if (keys.has("w")) _move.add(_dir);
-    if (keys.has("s")) _move.sub(_dir);
-    if (keys.has("a")) _move.sub(_right);
-    if (keys.has("d")) _move.add(_right);
-    if (_move.lengthSq()) {
-      _move.normalize().multiplyScalar(radius * 0.6 * dt); // cross the scene in a few seconds
-      camera.position.add(_move);
-      controls.target.add(_move);
-    }
-    const yaw = (keys.has("ArrowLeft") ? 1 : 0) - (keys.has("ArrowRight") ? 1 : 0);
-    const pitch = (keys.has("ArrowUp") ? 1 : 0) - (keys.has("ArrowDown") ? 1 : 0);
-    if (yaw || pitch) {
-      const offset = controls.target.clone().sub(camera.position);
-      if (yaw) offset.applyAxisAngle(_up, yaw * 1.5 * dt);
-      if (pitch) {
-        const pitched = offset.clone().applyAxisAngle(_right, pitch * 1.2 * dt);
-        const angle = pitched.angleTo(_up);
-        if (angle > 0.09 && angle < Math.PI - 0.09) offset.copy(pitched); // don't flip over the poles
-      }
-      controls.target.copy(camera.position).add(offset);
-    }
-  }
 
   function resize() {
     const el = canvas.parentElement;
@@ -174,14 +137,10 @@ export function createRig(canvas, { idleSpin = false } = {}) {
   resize();
 
   function idleSway(dt) {
-    // Sway, don't orbit. A continuous orbit drifts off the framing the front end
-    // picked and ends up staring at a wall; this stays within a few degrees of
-    // it while keeping the scene visibly alive.
+    // Look gently side to side without moving away from the framed viewpoint.
     const SWAY = 0.13, RATE = 0.42; // radians amplitude, radians/sec
     swayT += dt;
-    const offset = camera.position.clone().sub(controls.target);
-    offset.applyAxisAngle(_up, SWAY * RATE * Math.cos(swayT * RATE) * dt);
-    camera.position.copy(controls.target).add(offset);
+    camera.rotateY(SWAY * RATE * Math.cos(swayT * RATE) * dt);
   }
 
   let lastT = performance.now();
@@ -191,15 +150,19 @@ export function createRig(canvas, { idleSpin = false } = {}) {
     lastT = now;
     for (const hook of frameHooks) hook(dt);
     if (spinning) idleSway(dt);
-    updateNav(dt);
-    controls.update();
+    const t = document.activeElement;
+    controls.fpsMovement.enable = !(t && /^(input|select|textarea|button)$/i.test(t.tagName));
+    if (controls.update(camera, camera)) spinning = false;
     renderer.render(scene, camera);
   })();
 
   return {
-    scene, world, camera, controls, renderer,
+    scene, world, camera, renderer,
     get radius() { return radius; },
-    set radius(v) { radius = Math.max(v, 1e-6); },
+    set radius(v) {
+      radius = Math.max(v, 1e-6);
+      controls.fpsMovement.moveSpeed = radius * 0.6;
+    },
     // Run fn(dt) at the top of every frame, before the camera is read.
     onFrame(fn) { frameHooks.push(fn); },
     stopSpin() { spinning = false; },
@@ -209,8 +172,7 @@ export function createRig(canvas, { idleSpin = false } = {}) {
       camera.near = 0.01;
       camera.far = 1000;
       camera.updateProjectionMatrix();
-      controls.target.set(0, 0, 0);
-      controls.update();
+      camera.lookAt(0, 0, 0);
     },
   };
 }

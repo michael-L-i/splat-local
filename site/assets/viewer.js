@@ -25,7 +25,7 @@ export function fileTypeFor(name) {
 
 export function createViewer(canvas, { idleSpin = false } = {}) {
   const rig = createRig(canvas, { idleSpin });
-  const { world, camera, controls } = rig;
+  const { world, camera } = rig;
 
   let splat = null;
 
@@ -63,8 +63,7 @@ export function createViewer(canvas, { idleSpin = false } = {}) {
     // Aim slightly above the centroid. Reconstructed floors are the blurriest
     // part of a walkthrough (they're closest to the camera path and seen at a
     // glancing angle), so looking at the centroid fills half the frame with mush.
-    controls.target.set(cx, cy + ey * 0.15, cz);
-    controls.update();
+    camera.lookAt(cx, cy + ey * 0.15, cz);
   }
 
   // Frame a splat by trimming outliers radially, then boxing what survives.

@@ -10,7 +10,7 @@ import { parsePLYAsync } from "splat-viewer/ply.js";
 
 export function createViewer(canvas) {
   const rig = createRig(canvas);
-  const { world, camera, controls } = rig;
+  const { world, camera } = rig;
 
   let pointCloud = null, frusta = null, splat = null;
   let frustaVisible = true;
@@ -48,8 +48,7 @@ export function createViewer(canvas) {
     camera.near = Math.max(rig.radius * 0.01, 0.001);
     camera.far = rig.radius * 60;
     camera.updateProjectionMatrix();
-    controls.target.set(cx, cy, cz);
-    controls.update();
+    camera.lookAt(cx, cy, cz);
   }
 
   function loadSparse(url) {
