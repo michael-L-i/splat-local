@@ -23,7 +23,7 @@ Turn a video walkthrough into a 3D Gaussian Splat and watch the scene resolve ou
 </tr>
 </table>
 
-<sub>An 11 s phone-style walkthrough → a splat you can fly through with WASD/arrow keys. Reconstructed end-to-end in under 25 min on an M5 Pro MacBook — 166 frames, COLMAP poses, 30k training steps. Footage: [Pexels #7578547](https://www.pexels.com/video/video-of-a-house-interior-7578547/) (free license).</sub>
+<sub>An 11 s phone-style walkthrough → a splat you can fly through with WASD/arrow keys. 166 frames, COLMAP poses, 18k training steps — **13 m 22 s end to end** on an M5 Pro MacBook. (The GIFs themselves were rendered from an earlier 30k-step run of the same scene, before the step count was cut; the cut costs nothing measurable — see ² below.) Footage: [Pexels #7578547](https://www.pexels.com/video/video-of-a-house-interior-7578547/) (free license).</sub>
 
 **[Fly through that scene in your browser →](https://michael-l-i.github.io/splat-local/)** — the same viewer this app ships, running on the reconstruction above. It also [opens your own splat files](https://michael-l-i.github.io/splat-local/viewer.html) (`.ply`, `.spz`, `.sog`, `.splat`, `.ksplat`), locally.
 
@@ -56,19 +56,19 @@ video ──▶ sharp frames ──▶ camera poses ──▶ splat training ─
 
 Upload a video, pick a preset, watch it build. Presets:
 
-| Preset  | Frames | Res  | Steps | Poses    | Training | Total          |
-|---------|--------|------|-------|----------|----------|----------------|
-| Preview | 100    | 1536 | 10k   | ~1 min   | ~7 min   | **~8 min** ¹   |
-| High    | 200    | 2048 | 18k   | 2–10 min | ~11 min  | **~14 min** ²  |
-| Max     | 250    | 2560 | 45k   | 10–20 min| ~50 min  | **~1–1.5 h** ¹ |
+| Preset  | Frames | Res  | Steps | Poses    | Training   | Total             |
+|---------|--------|------|-------|----------|------------|-------------------|
+| Preview | 100    | 1536 | 10k   | ~1 min   | ~7 min     | ~8 min ¹          |
+| High    | 200    | 2048 | 18k   | 2–10 min | ~11 min    | **~14 min** ²     |
+| Max     | 250    | 2560 | 45k   | 10–20 min| ~35–50 min | ~45 min – 1.2 h ¹ |
 
 <sub>Measured on an M5 Pro MacBook Pro (18-core, 48 GB unified memory).</sub>
 
-<sub>² **High is measured end to end**: 166 frames at 2048 px, 18k steps → 11 s frame selection + 2 m 18 s COLMAP + 10 m 53 s training = **13 m 22 s**. The demo GIFs above are from the same scene at the old 30k setting, which took 24 m 42 s — 30k was cut to 18k because held-out PSNR stops moving once densification stops, at no measurable quality cost ([docs/step-count.md](docs/step-count.md)).</sub>
+<sub>² **High is the measured row**, end to end: 166 frames at 2048 px, 18k steps → 11 s frame selection + 2 m 18 s COLMAP + 10 m 53 s training = **13 m 22 s**. The demo GIFs above are from the same scene at the old 30k setting, which took 24 m 42 s — 30k was cut to 18k because held-out PSNR stops moving once densification stops, at no measurable quality cost ([docs/step-count.md](docs/step-count.md)).</sub>
 
-<sub>¹ Preview and Max are extrapolated from that run (training holds a steady ~22 steps/s across resolutions), not yet measured end to end.</sub>
+<sub>¹ **Preview and Max are estimates, not measurements**, and the step rate is not a constant you can extrapolate from. Per-step cost rises with splat count, and splats keep growing until `growth_stop` — so the same scene trained at 2048 px averaged 22.6 steps/s over a 30k run but 27.6 steps/s over an 18k one, because the longer run spent half its life at full splat count. Max is the softest number in the table: 45k steps at 2560 px with LPIPS loss enabled, none of which the measured run exercised. Its range brackets a flat extrapolation at the low end and the LPIPS/resolution penalty at the high end.</sub>
 
-**Pose time varies a lot with the scene.** COLMAP scales superlinearly with frame count and how hard the footage is to match — two runs here took 2 m 18 s at 166 frames and 10 m 1 s at 201 frames. Training time, by contrast, is predictable: it tracks step count almost exactly.
+**Pose time varies a lot with the scene.** COLMAP scales superlinearly with frame count and how hard the footage is to match — two runs here took 2 m 18 s at 166 frames and 10 m 1 s at 201 frames. Training is far more predictable, but it is not linear in step count: a run that spends more of its life past `growth_stop` carries a bigger splat set for longer and averages a lower rate.
 
 ### Pose mapper
 
