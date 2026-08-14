@@ -117,4 +117,4 @@ Why the gate exists, what it checks, and the held-out-view PSNR behind the defau
 | `vendor/` | Brush binary, three.js and Spark builds |
 | `jobs/` | per-run work dirs (gitignored) |
 | `scripts/` | `eval.py` — held-out PSNR/SSIM harness, dev tooling only |
-| `docs/` | [API contract](docs/api.md), [pose mapper A/B](docs/pose-mapper.md), [step count](docs/step-count.md) |
+| `docs/` | [API contract](docs/api.md), [pose mapper A/B](docs/pose-mapper.md), [step count](docs/step-count.md), [viewer cost](docs/viewer-cost.md) |
