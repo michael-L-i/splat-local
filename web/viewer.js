@@ -24,6 +24,7 @@ export function createViewer(canvas) {
     world.remove(obj);
     if (obj.dispose) obj.dispose();
     else { obj.geometry.dispose(); obj.material.dispose(); }
+    rig.invalidate(); // every removal is a scene change the rig cannot see
     return null;
   }
 
@@ -70,6 +71,7 @@ export function createViewer(canvas) {
         pointCloud = new THREE.Points(geo, mat);
         pointCloud.visible = !splat; // a checkpoint supersedes the sparse cloud
         world.add(pointCloud);
+        rig.invalidate();
       })
       .catch((e) => console.error("sparse cloud load failed:", e));
   }
@@ -100,11 +102,12 @@ export function createViewer(canvas) {
     );
     frusta.visible = frustaVisible;
     world.add(frusta);
+    rig.invalidate();
   }
 
   function setFrustaVisible(v) {
     frustaVisible = v;
-    if (frusta) frusta.visible = v;
+    if (frusta) { frusta.visible = v; rig.invalidate(); }
   }
 
   // Checkpoints can land faster than they decode; keep only the newest pending
@@ -125,6 +128,7 @@ export function createViewer(canvas) {
       splat = mesh;
       currentCheckpointUrl = url;
       if (pointCloud) pointCloud.visible = false;
+      rig.invalidate();
     } catch (e) {
       console.error("checkpoint load failed:", e);
     } finally {
