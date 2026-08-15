@@ -133,6 +133,10 @@ export function createViewer(canvas, { idleSpin = false } = {}) {
     if (splat) { world.remove(splat); splat.dispose(); }
     splat = mesh;
     fitToSplat(mesh);
+    // fitToSplat moves the camera and calls controls.update() itself, so the
+    // rig's own change check has already been satisfied by the time the loop
+    // next runs — the new mesh and the new framing both need announcing.
+    rig.invalidate();
     return mesh;
   }
 
