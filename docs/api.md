@@ -35,7 +35,7 @@ Every event is `event: state` with a full JSON job snapshot:
 support so it can be scrubbed. The UI plays it beside the viewer for the whole run; the tab
 that did the upload uses its own blob instead, so this is for reloads and second tabs.
 
-Fields are null/absent until their stage produces them. `checkpoint` is what the viewer loads: the latest exported `.ply` during training, then `exports/scene-view.sog` once the export stage has built it (`step`/`total_steps` stay as they were).
+Fields are null/absent until their stage produces them. `checkpoint` is what the viewer loads: during training an SH-degree-1 preview copy of the latest export (`checkpoints/preview_*.ply`, 2.6× smaller than the full checkpoint), the full-SH `.ply` once training ends, then `exports/scene-view.sog` once the export stage has built it (`step`/`total_steps` stay as they were).
 
 `gaussians` and `fill_ratio` (average overdraw layers per pixel, from `splat-transform --stats`) are present per artifact when Node is available; `name`/`url`/`bytes` are always present.
 
@@ -48,4 +48,4 @@ Without Node (`npx`), only the raw `scene.ply` checkpoint copy is produced and t
 
 ## Job directory layout
 
-`jobs/{id}/`: `input.<ext>`, `frames/*.jpg`, `colmap/` (db + sparse), `dataset/` (undistorted images + sparse for Brush), `sparse.ply`, `checkpoints/*.ply`, `exports/*`
+`jobs/{id}/`: `input.<ext>`, `frames/*.jpg`, `colmap/` (db + sparse), `dataset/` (undistorted images + sparse for Brush), `sparse.ply`, `checkpoints/*.ply` (Brush's `export_*.ply` originals, kept; plus at most two transient `preview_*.ply` stream copies while training runs), `exports/*`
