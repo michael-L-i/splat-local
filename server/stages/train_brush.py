@@ -6,6 +6,7 @@ import threading
 from pathlib import Path
 
 from ..pipeline import JobCancelled
+from .preview import PartialFile, write_preview
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _STEP_RE = re.compile(r"(\d+)\s*/\s*(\d+)")
@@ -71,6 +72,31 @@ def run(job, work: Path, preset):
     seen_checkpoints: set[str] = set()
     log_tail: list[str] = []
     best_progress = 0.0
+    previews: list[Path] = []
+    last_streamed: dict = {}
+
+    # What the browser should load for checkpoint p: an SH1 preview when one
+    # can be written (see preview.py), the original when it can't — or when
+    # this is the final checkpoint, where the full scene belongs on screen.
+    def stream_name(p: Path, step) -> str:
+        if step == preset.total_steps:
+            return p.name
+        preview = export_dir / p.name.replace("export_", "preview_")
+        try:
+            ok = write_preview(p, preview)
+        except PartialFile:
+            raise
+        except Exception:
+            ok = False
+        if not ok:
+            return p.name
+        previews.append(preview)
+        # Previews are transient: the one before last may still be streaming
+        # to a browser tab, anything older cannot be.
+        for old in previews[:-2]:
+            old.unlink(missing_ok=True)
+        del previews[:-2]
+        return preview.name
 
     def scan_checkpoints():
         nonlocal best_progress
@@ -78,11 +104,16 @@ def run(job, work: Path, preset):
                         key=lambda p: int(re.search(r"export_(\d+)", p.name).group(1))):
             if p.name in seen_checkpoints:
                 continue
-            seen_checkpoints.add(p.name)
             m = re.search(r"export_(\d+)\.ply", p.name)
             step = int(m.group(1)) if m else None
+            try:
+                name = stream_name(p, step)
+            except PartialFile:
+                return  # Brush is still writing it; the next scan will get it
+            seen_checkpoints.add(p.name)
+            last_streamed.update(file=p.name, streamed=name, step=step)
             job.update(checkpoint={
-                "url": job.file_url(f"checkpoints/{p.name}"),
+                "url": job.file_url(f"checkpoints/{name}"),
                 "step": step,
                 "total_steps": preset.total_steps,
             })
@@ -120,5 +151,18 @@ def run(job, work: Path, preset):
         raise RuntimeError("brush training failed:\n" + "".join(log_tail[-20:]))
     if not seen_checkpoints:
         raise RuntimeError("brush training produced no checkpoints")
+
+    # The stream ends on the full-quality scene. Normally the final checkpoint
+    # already went out untruncated (step == total_steps skips the preview), but
+    # a run that stopped short leaves an SH1 preview on screen — re-announce
+    # its original, then drop the previews. The originals stay for export/eval.
+    if last_streamed and last_streamed["streamed"] != last_streamed["file"]:
+        job.update(checkpoint={
+            "url": job.file_url(f"checkpoints/{last_streamed['file']}"),
+            "step": last_streamed["step"],
+            "total_steps": preset.total_steps,
+        })
+    for p in previews:
+        p.unlink(missing_ok=True)
 
     job.update(progress=1.0, message="training complete")
