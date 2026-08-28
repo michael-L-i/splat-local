@@ -1,10 +1,10 @@
 # SH-truncated preview checkpoints for the live stream.
 #
 # Brush's mid-training exports carry the full training state: 59 float
-# properties per splat, 45 of them the f_rest_* higher-order SH bands — 76% of
-# every checkpoint spent on view-dependent shading detail a resolving preview
-# cannot show. On the high preset checkpoints reach ~110 MB by growth_stop and
-# land every 1000 steps, and the browser re-downloads, re-parses and re-uploads
+# properties per splat, 45 of them the f_rest_* SH bands — and all but 9 of
+# those hold second- and third-order shading detail a resolving preview cannot
+# show. On the high preset checkpoints reach ~110 MB by growth_stop and land
+# every 1000 steps, and the browser re-downloads, re-parses and re-uploads
 # each one whole.
 #
 # Truncating the stream to SH degree 1 keeps first-order view dependence and

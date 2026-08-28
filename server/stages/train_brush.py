@@ -91,8 +91,9 @@ def run(job, work: Path, preset):
         if not ok:
             return p.name
         previews.append(preview)
-        # Previews are transient: the one before last may still be streaming
-        # to a browser tab, anything older cannot be.
+        # Keep the newest two: the one before last may still be streaming to a
+        # browser tab. (A badly throttled tab could still 404 on an older URL —
+        # SSE sends whole snapshots, so the next one supersedes it in a beat.)
         for old in previews[:-2]:
             old.unlink(missing_ok=True)
         del previews[:-2]
@@ -122,47 +123,50 @@ def run(job, work: Path, preset):
                 job.update(progress=best_progress)
 
     eof = False
-    while not eof:
-        if job.cancelled:
-            break
-        try:
-            line = q.get(timeout=2.0)
-        except queue.Empty:
-            line = ""
-        if line is None:
-            eof = True
-        elif line:
-            log_tail.append(line)
-            del log_tail[:-50]
-            m = _STEP_RE.search(line)
-            if m:
-                step, total = int(m.group(1)), int(m.group(2))
-                best_progress = max(best_progress, min(step / max(total, 1), 1.0))
-                job.update(progress=best_progress, message=f"training step {step}/{total}")
+    try:
+        while not eof:
+            if job.cancelled:
+                break
+            try:
+                line = q.get(timeout=2.0)
+            except queue.Empty:
+                line = ""
+            if line is None:
+                eof = True
+            elif line:
+                log_tail.append(line)
+                del log_tail[:-50]
+                m = _STEP_RE.search(line)
+                if m:
+                    step, total = int(m.group(1)), int(m.group(2))
+                    best_progress = max(best_progress, min(step / max(total, 1), 1.0))
+                    job.update(progress=best_progress, message=f"training step {step}/{total}")
+            scan_checkpoints()
+
+        proc.wait()
+        job.proc = None
         scan_checkpoints()
 
-    proc.wait()
-    job.proc = None
-    scan_checkpoints()
+        if job.cancelled:
+            raise JobCancelled()
+        if proc.returncode != 0:
+            raise RuntimeError("brush training failed:\n" + "".join(log_tail[-20:]))
+        if not seen_checkpoints:
+            raise RuntimeError("brush training produced no checkpoints")
 
-    if job.cancelled:
-        raise JobCancelled()
-    if proc.returncode != 0:
-        raise RuntimeError("brush training failed:\n" + "".join(log_tail[-20:]))
-    if not seen_checkpoints:
-        raise RuntimeError("brush training produced no checkpoints")
-
-    # The stream ends on the full-quality scene. Normally the final checkpoint
-    # already went out untruncated (step == total_steps skips the preview), but
-    # a run that stopped short leaves an SH1 preview on screen — re-announce
-    # its original, then drop the previews. The originals stay for export/eval.
-    if last_streamed and last_streamed["streamed"] != last_streamed["file"]:
-        job.update(checkpoint={
-            "url": job.file_url(f"checkpoints/{last_streamed['file']}"),
-            "step": last_streamed["step"],
-            "total_steps": preset.total_steps,
-        })
-    for p in previews:
-        p.unlink(missing_ok=True)
-
-    job.update(progress=1.0, message="training complete")
+        # The stream ends on the full-quality scene. Normally the final
+        # checkpoint already went out untruncated (step == total_steps skips
+        # the preview), but a run that stopped short leaves an SH1 preview on
+        # screen — re-announce its original. The originals stay for export/eval.
+        if last_streamed and last_streamed["streamed"] != last_streamed["file"]:
+            job.update(checkpoint={
+                "url": job.file_url(f"checkpoints/{last_streamed['file']}"),
+                "step": last_streamed["step"],
+                "total_steps": preset.total_steps,
+            })
+        job.update(progress=1.0, message="training complete")
+    finally:
+        # Previews are stream-only artifacts: never left behind, whether the
+        # stage finished, failed, or was cancelled.
+        for p in previews:
+            p.unlink(missing_ok=True)
