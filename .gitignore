@@ -6,6 +6,7 @@ node_modules/
 jobs/
 vendor/brush
 vendor/brush_src/
+vendor/brush_browser_src/
 *.ply
 *.spz
 *.sog

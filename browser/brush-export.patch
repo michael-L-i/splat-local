@@ -1,0 +1,37 @@
+diff --git a/Cargo.lock b/Cargo.lock
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -1004,6 +1004,7 @@ version = "0.3.0"
+ dependencies = [
+  "brush-process",
+  "brush-render",
++ "brush-serde",
+  "burn",
+  "console_error_panic_hook",
+  "getrandom 0.3.4",
+diff --git a/apps/brush-js/Cargo.toml b/apps/brush-js/Cargo.toml
+--- a/apps/brush-js/Cargo.toml
++++ b/apps/brush-js/Cargo.toml
+@@ -12,4 +12,5 @@ crate-type = ["cdylib", "rlib"]
+ [dependencies]
+ brush-process.path = "../../crates/brush-process"
+ brush-render.path = "../../crates/brush-render"
++brush-serde.path = "../../crates/brush-serde"
+ rrfd.path = "../../crates/rrfd"
+diff --git a/apps/brush-js/src/lib.rs b/apps/brush-js/src/lib.rs
+--- a/apps/brush-js/src/lib.rs
++++ b/apps/brush-js/src/lib.rs
+@@ -195,5 +195,13 @@ impl BrushSplatBuffers {
+ #[wasm_bindgen]
+ impl BrushSplats {
++    #[wasm_bindgen(js_name = exportPly)]
++    pub async fn export_ply(&self) -> Result<js_sys::Uint8Array, JsValue> {
++        let data = brush_serde::splat_to_ply(self.inner.clone(), None)
++            .await
++            .map_err(|e| JsValue::from_str(&e.to_string()))?;
++        Ok(js_sys::Uint8Array::from(data.as_slice()))
++    }
++
+     #[wasm_bindgen(getter, js_name = numSplats)]
+     pub fn num_splats(&self) -> u32 {
+         self.inner.num_splats()
