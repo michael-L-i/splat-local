@@ -54,6 +54,11 @@ video ──▶ sharp frames ──▶ camera poses ──▶ splat training ─
 ./run.sh          # serves http://127.0.0.1:8000
 ```
 
+Experimental, no-backend alternative: [Browser lab](browser/README.md). It runs
+video decoding, a small camera solver and Brush training entirely in desktop
+Chrome/Edge. This is a lower-resolution prototype, not a replacement for the
+native pipeline's reconstruction quality.
+
 Upload a video, pick a preset, watch it build. Presets:
 
 | Preset  | Frames | Res  | Steps | Poses    | Training   | Total             |
