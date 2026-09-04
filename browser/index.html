@@ -7,9 +7,17 @@
   <link rel="icon" href="data:,"><link rel="stylesheet" href="./src/style.css">
 </head>
 <body>
-  <header><strong>SPLAT → LOCAL</strong><span>Browser creator <b>Experimental</b></span></header>
+  <header class="topbar">
+    <a class="wordmark" href="../" aria-label="Splat Local home">SPLAT<span class="arrow">&rarr;</span>LOCAL</a>
+    <nav class="topnav" aria-label="Main navigation">
+      <a class="nav-create" href="./" aria-current="page">Create</a>
+      <a href="../viewer.html">Viewer</a>
+      <a href="https://github.com/michael-L-i/splat-local">GitHub</a>
+    </nav>
+  </header>
   <main>
     <aside>
+      <p class="note experiment">Browser creator · experimental</p>
       <h1>Video to 3D.</h1>
       <p class="intro">Create, explore, and take it with you.<br>Your video stays on this device.</p>
       <form id="form">

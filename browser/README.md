@@ -50,6 +50,8 @@ OpenCV and the viewer are bundled locally; there are no runtime CDN dependencies
 
 ## Layout
 
+- `../site/assets/theme.css`: shared colors and navigation for the homepage,
+  viewer and creator. Vite bundles it into the creator; Pages copies it for the site.
 - `src/frames.js`, `quality.js`: browser video decoder, sharp-frame selection and bounded presets.
 - `src/sfm.js`, `geometry.js`, `sfm-worker.js`: OpenCV/WASM AKAZE matching,
   eight-point RANSAC initialization, incremental PnP and triangulation in a worker.
@@ -70,8 +72,12 @@ trainer or implement another splat format. The lockfile is pinned too.
 
 ```sh
 npm test
+npm run test:site
 SPLAT_TEST_VIDEO=/absolute/path/to/clip.mp4 SPLAT_TEST_STEPS=2000 npm run test:e2e
 ```
+
+`test:site` checks the assembled homepage → creator → viewer navigation, shared
+theme, responsive layouts, demo rendering and file controls. It needs no test video.
 
 To test the actual deployed site instead (no local server is started):
 

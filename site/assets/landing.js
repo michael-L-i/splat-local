@@ -39,7 +39,7 @@ async function fetchWithProgress(url, onProgress) {
 async function main() {
   let viewer;
   try {
-    viewer = createViewer(canvas, { idleSpin: true });
+    viewer = createViewer(canvas, { idleSpin: !matchMedia('(prefers-reduced-motion: reduce)').matches });
   } catch (e) {
     console.error(e);
     fail("webgl unavailable");
