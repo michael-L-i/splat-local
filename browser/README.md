@@ -78,6 +78,9 @@ SPLAT_TEST_VIDEO=/absolute/path/to/clip.mp4 SPLAT_TEST_STEPS=2000 npm run test:e
 
 `test:site` checks the assembled homepage → creator → viewer navigation, shared
 theme, responsive layouts, demo rendering and file controls. It needs no test video.
+The scene-rendering integration test runs locally; GitHub's software renderer
+times out on this scene. CI covers navigation, layout and the no-WebGL fallback.
+GPU-enabled runners can opt into the rendering test with `SPLAT_TEST_WEBGL=1`.
 
 To test the actual deployed site instead (no local server is started):
 

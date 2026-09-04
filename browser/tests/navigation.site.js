@@ -27,6 +27,8 @@ test('homepage, creator and viewer form one connected, green site', async ({ pag
 });
 
 test('interactive demo and local file viewer still work', async ({ page }) => {
+  test.skip(process.env.CI && !process.env.SPLAT_TEST_WEBGL,
+    'Real-GPU integration check; use SPLAT_TEST_WEBGL=1 on a GPU-enabled runner.');
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') console.log(message.text()); });

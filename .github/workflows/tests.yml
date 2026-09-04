@@ -35,5 +35,5 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Test browser UI without GPU training
         run: npm run test:e2e -- --grep 'unsupported GPUs|presets, advanced controls'
-      - name: Test assembled site navigation and WebGL viewer
+      - name: Test assembled site navigation (real-GPU rendering runs locally)
         run: npm run test:site
