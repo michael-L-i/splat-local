@@ -3,20 +3,20 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Splat Local — video to 3D Gaussian Splat, entirely on your Mac</title>
-<meta name="description" content="Turn a video walkthrough into a 3D Gaussian Splat on your own Mac. No cloud, no CUDA, nothing uploaded. Fly through a real reconstruction in your browser." />
+<title>Splat Local — your video, in 3D</title>
+<meta name="description" content="Create a 3D Gaussian splat from a short video in your browser. Explore the demo, make your own scene, or open a splat file. Nothing uploaded." />
 <link rel="canonical" href="https://michael-l-i.github.io/splat-local/" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Splat Local" />
-<meta property="og:title" content="Splat Local — video to 3D Gaussian Splat, entirely on your Mac" />
-<meta property="og:description" content="Turn a video walkthrough into a 3D Gaussian Splat on your own Mac. No cloud, no CUDA, nothing uploaded. Fly through a real reconstruction in your browser." />
+<meta property="og:title" content="Splat Local — your video, in 3D" />
+<meta property="og:description" content="Create and explore 3D scenes on your own device. Start with a short video. Nothing uploaded." />
 <meta property="og:url" content="https://michael-l-i.github.io/splat-local/" />
 <meta property="og:image" content="https://michael-l-i.github.io/splat-local/assets/social-card.png" />
 <meta property="og:image:width" content="1280" />
 <meta property="og:image:height" content="640" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Splat Local — video to 3D Gaussian Splat, entirely on your Mac" />
-<meta name="twitter:description" content="Turn a video walkthrough into a 3D Gaussian Splat on your own Mac. No cloud, no CUDA, nothing uploaded." />
+<meta name="twitter:title" content="Splat Local — your video, in 3D" />
+<meta name="twitter:description" content="Create and explore 3D scenes on your own device. Nothing uploaded." />
 <meta name="twitter:image" content="https://michael-l-i.github.io/splat-local/assets/social-card.png" />
 <link rel="icon" href="data:," />
 <link rel="stylesheet" href="./assets/style.css" />
@@ -32,80 +32,40 @@
 }
 </script>
 </head>
-<body class="fixed">
+<body class="landing">
   <header class="topbar">
-    <a class="wordmark" href="./">SPLAT<span class="arrow">&rarr;</span>LOCAL</a>
-    <nav class="topnav">
-      <a href="./viewer.html">Splat viewer</a>
+    <a class="wordmark" href="./" aria-label="Splat Local home">SPLAT<span class="arrow">&rarr;</span>LOCAL</a>
+    <nav class="topnav" aria-label="Main navigation">
+      <a class="nav-create" href="./create/">Create</a>
+      <a href="./viewer.html">Viewer</a>
       <a href="https://github.com/michael-L-i/splat-local">GitHub</a>
     </nav>
   </header>
 
-  <div class="hero">
+  <main class="hero">
     <section class="hero-copy">
-      <div>
-        <p class="eyebrow" style="margin:0 0 10px">Runs entirely on your Mac</p>
-        <h1>Walk through a space once.<br />Get a 3D scene you can <em>fly through forever</em>.</h1>
-      </div>
-
-      <p class="lede">
-        That's a real reconstruction &mdash; an <b>11-second phone-style walkthrough</b>
-        turned into a 3D Gaussian Splat. No cloud, no CUDA, nothing uploaded.
-        Drag to orbit, or use <b>WASD</b> and the <b>arrow keys</b> to fly.
-      </p>
-
-      <div class="spec-grid">
-        <div class="spec">
-          <div class="k">Time to scene</div>
-          <div class="v">13<small>m</small> 22<small>s</small></div>
-        </div>
-        <div class="spec">
-          <div class="k">Measured on</div>
-          <div class="v">M5 Pro <small>48 GB</small></div>
-        </div>
-        <div class="spec">
-          <div class="k">Uploaded</div>
-          <div class="v">nothing</div>
-        </div>
-        <div class="spec">
-          <div class="k">Exports</div>
-          <div class="v">ply <small>· spz · sog</small></div>
-        </div>
-      </div>
-
-      <div class="pipeline">
-        <p class="eyebrow" style="margin:0 0 2px">How it works</p>
-        <div class="pipe-row"><span class="n">01</span><span class="t">sharp frames</span><span class="d">ffmpeg + sharp-frames</span></div>
-        <div class="pipe-row"><span class="n">02</span><span class="t">camera poses</span><span class="d">COLMAP, or Depth Anything 3 on MPS</span></div>
-        <div class="pipe-row"><span class="n">03</span><span class="t">splat training</span><span class="d">Brush &mdash; Metal-native 3DGS</span></div>
-        <div class="pipe-row"><span class="n">04</span><span class="t">cleanup + export</span><span class="d">splat-transform</span></div>
-      </div>
-
-      <p class="lede" style="font-size:13.5px">
-        Training checkpoints stream straight into the viewer while it runs, so you
-        watch the scene sharpen out of the fog instead of staring at a progress bar.
-      </p>
-
+      <p class="eyebrow">A little video. A new perspective.</p>
+      <h1>Your video.<br /><em>In another<br />dimension.</em></h1>
+      <p class="lede">Turn a short walkthrough into a 3D scene you can explore. Nothing leaves your device.</p>
       <div class="cta-row">
-        <a class="btn btn-primary" href="https://github.com/michael-L-i/splat-local">Get it on GitHub</a>
-        <a class="btn" href="./viewer.html">Open your own splat &rarr;</a>
-        <p class="fineprint">
-          Apple Silicon · Python 3.12 · MIT licensed.<br />
-          Demo footage: Pexels #7578547 (free license). 166 frames, COLMAP poses, 30k steps.
-        </p>
+        <a class="btn btn-primary" href="./create/">Create from video <span aria-hidden="true">&nearr;</span></a>
+        <a class="text-link" href="./viewer.html">Already have a splat? Open it &rarr;</a>
       </div>
+      <p class="fineprint">Browser creator · experimental<br />Desktop Chrome / Edge with WebGPU</p>
+      <details class="demo-details"><summary>About this demo</summary><p>An 11-second walkthrough, reconstructed with native COLMAP + Brush. Browser results differ. <a href="https://www.pexels.com/video/video-of-a-house-interior-7578547/">Footage by Kindel Media on Pexels.</a></p></details>
+      <a class="native-link" href="https://github.com/michael-L-i/splat-local#quickstart">Prefer the native pipeline? <span aria-hidden="true">&nearr;</span></a>
     </section>
 
-    <section class="hero-stage" id="stage">
-      <canvas id="canvas"></canvas>
-      <div class="stage-badge"><b>home walkthrough</b> &mdash; 135,575 splats</div>
-      <div class="nav-hint">drag orbit · scroll zoom · WASD move · &larr;&rarr; turn · &uarr;&darr; look</div>
-      <div class="loading-veil" id="veil">
+    <section class="hero-stage" id="stage" aria-label="Interactive native-pipeline demo">
+      <canvas id="canvas" tabindex="0" aria-label="Explore the demo: drag to orbit, scroll to zoom, WASD to move"></canvas>
+      <div class="stage-badge"><span class="dot good"></span> Interactive demo</div>
+      <div class="stage-caption"><span>Home walkthrough <small>Native pipeline</small></span><span class="nav-hint">Drag to explore · scroll to zoom</span></div>
+      <div class="loading-veil" id="veil" role="status">
         <span id="veilLabel">loading scene</span>
         <div class="veil-track"><div class="veil-fill" id="veilFill"></div></div>
       </div>
     </section>
-  </div>
+  </main>
 
   <script type="module" src="./assets/landing.js"></script>
 </body>

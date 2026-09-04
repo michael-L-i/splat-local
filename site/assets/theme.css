@@ -1,0 +1,24 @@
+/* Shared by the homepage, file viewer and browser creator. */
+:root {
+  color-scheme: dark;
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  --bg: #111510; --panel: #171e14; --panel-2: #20291b;
+  --border: #343d30; --border-hi: #4b5843;
+  --text: #e6eae2; --text-dim: #abb5a4; --accent: #c3e8a1;
+  --accent-soft: #c3e8a112; --good: #a4d987; --bad: #ffc2a8;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); }
+button, input, select { font: inherit; color: inherit; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+[hidden] { display: none !important; }
+.topbar { min-height: 72px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 32px; border-bottom: 1px solid var(--border); }
+.wordmark { color: var(--text); font-size: .875rem; font-weight: 750; letter-spacing: -.03em; text-decoration: none; white-space: nowrap; }
+.wordmark .arrow { color: var(--accent); margin-inline: 4px; }
+.topnav { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.topnav a { padding: 8px 12px; border: 1px solid transparent; border-radius: 6px; color: var(--text-dim); text-decoration: none; font-size: .875rem; font-weight: 500; }
+.topnav a:hover, .topnav a[aria-current] { color: var(--accent); background: var(--accent-soft); }
+.topnav .nav-create { color: var(--accent); border-color: var(--border-hi); }
+@media (max-width: 520px) { .topbar { padding: 16px 20px; gap: 12px; } .topnav { gap: 0; } .topnav a { padding: 8px; } }
