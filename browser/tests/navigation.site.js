@@ -10,7 +10,7 @@ test('homepage, creator and viewer form one connected, green site', async ({ pag
   await page.getByRole('link', { name: 'Create from video' }).click();
   await expect(page).toHaveURL(/\/create\/$/);
   await page.getByRole('link', { name: 'Splat Local home' }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Your video.');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Video to Gaussian splats');
   for (const path of ['./', './viewer.html', './create/']) {
     await page.goto(path);
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim())).toBe('#c3e8a1');

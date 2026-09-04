@@ -1,11 +1,10 @@
 @import '../../site/assets/theme.css';
 :root { --muted: var(--text-dim); --line: var(--border); }
-.note, .intro { color: var(--muted); }
+.note { color: var(--muted); }
 .experiment { margin: 0 0 12px; }
 main { display: grid; grid-template-columns: 370px minmax(0, 1fr); min-height: calc(100dvh - 72px); }
 aside { padding: 28px; border-right: 1px solid var(--line); }
 h1 { font-size: 2.2rem; line-height: 1.1; letter-spacing: -.06em; margin: 0 0 16px; }
-.intro { margin-bottom: 28px; }
 label { display: block; font-size: .875rem; margin: 18px 0 8px; }
 input, select { display: block; width: 100%; padding: 10px; margin-top: 8px; background: #1b2218; color: inherit; border: 1px solid #4b5843; border-radius: 6px; font: inherit; }
 input[type=file] { font-size: .8125rem; }
@@ -42,7 +41,6 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .75rem; max-hei
 .viewport { width: 100%; aspect-ratio: var(--aspect, 16 / 9); margin-block: auto; }
 canvas { display: block; width: 100%; height: 100%; }
 #empty { position: absolute; top: 40%; width: 100%; text-align: center; padding: 20px; pointer-events: none; }
-#empty h2 { font-weight: 500; font-size: clamp(1.5rem, 3vw, 2.5rem); letter-spacing: -.04em; margin: 0; }
 #empty p { color: var(--muted); }
 #result { padding: 18px 24px; border-top: 1px solid var(--line); }
 #stats { font-size: .875rem; margin-top: 0; }
