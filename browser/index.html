@@ -3,32 +3,59 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Splat Local — Browser Lab</title>
+  <meta name="description" content="Turn a short video into an explorable 3D Gaussian splat, privately in your browser.">
   <link rel="icon" href="data:,"><link rel="stylesheet" href="./src/style.css">
 </head>
 <body>
-  <header><strong>SPLAT → LOCAL</strong><span>Browser lab · experimental</span></header>
+  <header><strong>SPLAT → LOCAL</strong><span>Browser creator <b>Experimental</b></span></header>
   <main>
     <aside>
-      <h1>A video.<br>Your own 3D scene.</h1>
-      <p>Frames, camera reconstruction and training run on this device. Your video is never uploaded.</p>
+      <h1>Video to 3D.</h1>
+      <p class="intro">Create, explore, and take it with you.<br>Your video stays on this device.</p>
       <form id="form">
-        <label>Video <input id="video" type="file" accept="video/*" required></label>
-        <div class="options">
-          <label>Frames <select id="frames"><option>16</option><option selected>24</option><option>32</option></select></label>
-          <label>Training steps <select id="steps"><option value="200">200 · smoke test</option><option value="2000" selected>2,000 · preview</option><option value="5000">5,000 · longer</option></select></label>
-        </div>
-        <label>Horizontal field of view<select id="fov"><option value="auto">Estimate automatically</option><option value="45">45° · narrow</option><option value="60">60° · normal</option><option value="75">75° · wide</option><option value="90">90° · very wide</option><option value="105">105° · ultra-wide</option></select></label>
-        <p class="note">Try a short, slow sideways move around a textured, stationary scene. No lens calibration, bundle adjustment or loop closure yet; quality will differ from the native pipeline.</p>
-        <button id="start">Create splat</button><button id="cancel" type="button" disabled>Cancel</button>
+        <label>01 / Choose a video<input id="video" type="file" accept="video/*" required aria-describedby="capture-tip"></label>
+        <video id="source" controls muted playsinline hidden aria-label="Source video preview"></video>
+        <p id="file-info" class="note">1–60 seconds · up to 200 MB</p>
+        <p id="capture-tip" class="note">Move slowly around a still, textured scene. Avoid zooming, cuts, moving people, and turning in place.</p>
+        <label>02 / Quality<select id="quality"><option value="fast">Quick preview</option><option value="balanced" selected>Balanced</option><option value="detailed">More detail · higher GPU use</option></select></label>
+        <p id="quality-info" class="note"></p>
+        <details id="advanced"><summary>Advanced settings</summary>
+          <div class="options">
+            <label>Frames<select id="frames"><option>16</option><option>24</option><option selected>32</option><option>48</option></select></label>
+            <label>Training steps<select id="steps"><option value="200">200 · test</option><option value="2000">2,000</option><option value="5000" selected>5,000</option><option value="10000">10,000</option></select></label>
+          </div>
+          <label>Horizontal field of view<select id="fov"><option value="auto">Estimate and refine</option><option value="45">45° · narrow</option><option value="60">60° · normal</option><option value="75">75° · wide</option><option value="90">90° · very wide</option><option value="105">105° · ultra-wide</option></select></label>
+          <label class="check"><input id="sharp" type="checkbox" checked> Prefer sharper frames</label>
+          <label class="check"><input id="evaluate" type="checkbox"> Reserve frames for quality checks</label>
+          <p class="note">Excludes every eighth view from training. Adds validation scores to the run report.</p>
+        </details>
+        <button id="start" disabled>Create splat</button><button id="cancel" type="button" disabled>Cancel</button>
       </form>
-      <p id="status" role="status">Checking browser support…</p>
-      <progress id="progress" max="1" value="0"></progress>
-      <a id="download" hidden download="scene.ply">Download PLY</a>
-      <a id="report" hidden download="report.json">Download run report</a>
-      <details><summary>Run log</summary><pre id="log"></pre></details>
-      <p class="note">Desktop Chrome/Edge · WebGPU required · 1–60 sec · ≤200 MB · 768 px frames. Keep this tab open while training.</p>
+      <div class="run-status">
+        <p id="status" role="status">Checking browser support…</p>
+        <progress id="progress" max="1" value="0" aria-label="Overall creation progress"></progress>
+        <p id="elapsed" class="note" hidden></p>
+      </div>
+      <details><summary>Technical run log</summary><pre id="log"></pre></details>
+      <p class="note">Desktop Chrome/Edge with WebGPU. Keep this tab open. Results depend on your footage; lens distortion and loop closure are not corrected yet.</p>
     </aside>
-    <section id="scene"><canvas id="viewer" aria-label="3D splat preview"></canvas><p id="empty">Your reconstruction will appear here.<br><small>Drag to orbit · scroll to zoom · WASD to explore</small></p></section>
+    <section id="scene" aria-label="Reconstruction workspace">
+      <div class="toolbar"><span id="result-title">Your workspace</span><div class="view-controls">
+        <button id="previous-view" class="secondary" aria-label="Previous captured camera" disabled>←</button>
+        <span id="camera-view">Captured views</span>
+        <button id="next-view" class="secondary" aria-label="Next captured camera" disabled>→</button>
+        <button id="reset-view" class="secondary" disabled>Reset view</button>
+      </div></div>
+      <ol id="stages" aria-label="Creation stages"><li>Frames</li><li>Cameras</li><li>Training</li><li>Preview</li></ol>
+      <div class="viewport"><canvas id="viewer" aria-label="3D splat preview" tabindex="0"></canvas></div>
+      <div id="empty"><h2>A new perspective.</h2><p>Choose a video to create your first scene.</p><p class="note">Everything runs here. No account, no upload.</p></div>
+      <div id="result" hidden>
+        <p id="stats"></p>
+        <a id="download" hidden download="scene.ply">Download PLY</a>
+        <a id="report" class="secondary" hidden download="report.json">Run report</a>
+        <p class="note">Arrow buttons follow the captured views. Drag to orbit · scroll to zoom · WASD to explore. Unseen areas may have holes.</p>
+      </div>
+    </section>
   </main>
   <script type="module" src="./src/app.js"></script>
 </body>

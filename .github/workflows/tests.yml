@@ -32,3 +32,6 @@ jobs:
       # GPU training and the separate Rust/WASM build are exercised locally.
       - name: Build JavaScript (WASM is tested locally)
         run: SPLAT_JS_ONLY=1 npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Test browser UI without GPU training
+        run: npm run test:e2e -- --grep 'unsupported GPUs|presets, advanced controls'

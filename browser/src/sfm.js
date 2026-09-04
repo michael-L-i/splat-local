@@ -1,5 +1,6 @@
 import cv from '@techstark/opencv-js';
 import { bootstrap, identityPose, reprojection, triangulate } from './geometry.js';
+import { refine } from './refine.js';
 
 // OpenCV 4.x is a thenable, not a Promise; awaiting it directly loops forever.
 export const cvReady = new Promise(resolve => {
@@ -123,10 +124,12 @@ async function mapFrames(frames, camera, cachedMatch, progress) {
     await new Promise(resolve => setTimeout(resolve, 0));
   }
   const registered = frames.filter(f => f.pose);
+  const tracks = points.map(() => []);
+  registered.forEach((f, frame) => [...f.landmarks].forEach(([key, id]) => tracks[id].push({ frame, xy: f.points[key] })));
   const errors = registered.flatMap(f => [...f.landmarks].map(([key, id]) => reprojection(f.pose, points[id].xyz, f.points[key], camera))).sort((a, b) => a - b);
   const fov = 360 / Math.PI * Math.atan(camera.width / (2 * camera.f));
   const report = { registered: registered.length, total: frames.length, points: points.length, medianError: errors[Math.floor(errors.length/2)], fov };
-  return { camera, frames: registered.map(({ index, pose }) => ({ index, pose })), points, report };
+  return { camera, frames: registered.map(({ index, pose }) => ({ index, pose })), points, report, tracks };
 }
 
 export async function reconstruct(images, camera, progress = () => {}) {
@@ -156,8 +159,19 @@ export async function reconstruct(images, camera, progress = () => {}) {
       if (score > bestScore) { best = result; bestScore = score; }
     }
     if (!best) throw new Error('No stable initial camera pair. Try a textured scene with sideways motion.');
+    progress('Refining camera positions and scene geometry…');
+    best = refine(best, best.tracks, { refineFocal: !camera.f, progress });
+    const errors = best.tracks.flatMap((track, id) => track.map(o => reprojection(best.frames[o.frame].pose, best.points[id].xyz, o.xy, best.camera))).sort((a, b) => a - b);
     const { report } = best;
-    if (report.registered < 4 || report.registered / report.total < 0.75 || report.medianError > 2) throw new Error(`Reconstruction rejected: ${report.registered}/${report.total} cameras, median error ${report.medianError.toFixed(2)} px. Try a shorter clip with more overlap.`);
+    report.initialMedianError = report.medianError;
+    report.medianError = errors[Math.floor(errors.length / 2)];
+    report.p90Error = errors[Math.floor(errors.length * 0.9)];
+    report.fov = 360 / Math.PI * Math.atan(best.camera.width / (2 * best.camera.f));
+    // Do not seed training with points that no longer agree with their views.
+    best.points = best.points.filter((point, id) => best.tracks[id].filter(o => reprojection(best.frames[o.frame].pose, point.xyz, o.xy, best.camera) <= 2).length >= 2);
+    report.points = best.points.length;
+    delete best.tracks;
+    if (report.registered < 4 || report.registered / report.total < 0.75 || report.points < 40 || !Number.isFinite(report.medianError) || report.medianError > 2 || report.p90Error > 4) throw new Error(`Reconstruction rejected: ${report.registered}/${report.total} cameras, median error ${report.medianError.toFixed(2)} px. Try a shorter clip with more overlap.`);
     return best;
   } finally { frames.forEach(frame => frame.desc.delete()); }
 }

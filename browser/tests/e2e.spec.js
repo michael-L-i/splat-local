@@ -16,8 +16,13 @@ test('video to downloadable splat without a backend', async ({ page }) => {
   await page.goto('./');
   await expect(page.locator('#status')).toContainText('Ready.', { timeout: 30000 });
   await page.locator('#video').setInputFiles(process.env.SPLAT_TEST_VIDEO);
+  if (process.env.SPLAT_TEST_QUALITY) await page.locator('#quality').selectOption(process.env.SPLAT_TEST_QUALITY);
+  await page.locator('#advanced summary').click();
+  if (process.env.SPLAT_TEST_EVALUATE) await page.locator('#evaluate').check();
+  if (process.env.SPLAT_TEST_FRAMES) await page.locator('#frames').selectOption(process.env.SPLAT_TEST_FRAMES);
   await page.locator('#steps').selectOption(process.env.SPLAT_TEST_STEPS || '200');
   if (process.env.SPLAT_TEST_FOV) await page.locator('#fov').selectOption(process.env.SPLAT_TEST_FOV);
+  await page.locator('#advanced summary').click();
   await page.locator('#start').click();
   let previous = '';
   while (await page.locator('#start').isDisabled()) {
@@ -26,8 +31,13 @@ test('video to downloadable splat without a backend', async ({ page }) => {
     await page.waitForTimeout(2000);
   }
   await test.info().attach('run-log', { body: await page.locator('#log').textContent(), contentType: 'text/plain' });
+  // These textured fixtures compress far above a blank canvas. Wait for Spark's
+  // asynchronous first draw; a status message alone does not prove a preview.
+  await expect.poll(async () => (await page.locator('#viewer').screenshot()).length, { timeout: 20000 }).toBeGreaterThan(20000);
+  await page.locator('aside').evaluate(element => { element.scrollTop = 0; });
   await page.screenshot({ path: 'test-results/result.png', fullPage: true });
   await expect(page.locator('#download')).toBeVisible();
+  await expect(page.locator('#result')).toBeVisible();
   await expect(page.locator('#status')).toContainText('Complete ·');
   const saved = page.waitForEvent('download');
   await page.locator('#download').click();
@@ -47,6 +57,14 @@ test('video to downloadable splat without a backend', async ({ page }) => {
   const stats = JSON.parse(await readFile('test-results/report.json', 'utf8'));
   expect(count).toBe(stats.splats);
   expect(stats.registered / stats.total).toBeGreaterThanOrEqual(0.75);
+  expect(stats.refinement.finalCost).toBeLessThanOrEqual(stats.refinement.initialCost);
+  expect(stats.samples).toHaveLength(stats.settings.frames);
+  if (process.env.SPLAT_TEST_EVALUATE) {
+    expect(Number.isFinite(stats.validation.psnr)).toBe(true);
+    expect(stats.validation.ssim).toBeGreaterThan(0);
+    expect(stats.validation.ssim).toBeLessThanOrEqual(1);
+  }
+  expect(stats.samples.every((sample, i, samples) => i === 0 || sample.time > samples[i-1].time)).toBe(true);
   expect(await page.evaluate(async () => {
     const entries = [];
     for await (const name of (await navigator.storage.getDirectory()).keys()) entries.push(name);
@@ -62,12 +80,26 @@ test('video to downloadable splat without a backend', async ({ page }) => {
   await page.mouse.up();
   await page.waitForTimeout(1000);
   await page.screenshot({ path: 'test-results/orbit.png', fullPage: true });
+  await page.locator('#reset-view').click();
+  await expect(page.locator('#reset-view')).toBeEnabled();
+  await page.locator('#next-view').click();
+  await expect(page.locator('#camera-view')).toHaveText(`View 2 / ${stats.registered}`);
+  await page.locator('#previous-view').click();
+  await expect(page.locator('#camera-view')).toHaveText(`View 1 / ${stats.registered}`);
+  const previousDownload = await page.locator('#download').getAttribute('href');
+  await page.locator('#video').setInputFiles({ name: 'broken.mp4', mimeType: 'video/mp4', buffer: Buffer.from('not a video') });
+  await page.locator('#start').click();
+  await expect(page.locator('#status')).toContainText('Cannot decode this video');
+  await expect(page.locator('#download')).toHaveAttribute('href', previousDownload);
+  await expect(page.locator('#download')).toBeVisible();
 });
 
 test('unsupported GPUs are explained before starting', async ({ page }) => {
   await page.addInitScript(() => Object.defineProperty(navigator, 'gpu', { value: undefined }));
   await page.goto('./');
   await expect(page.locator('#status')).toContainText('requires desktop Chrome/Edge');
+  await expect(page.locator('#start')).toBeDisabled();
+  await page.locator('#quality').selectOption('fast');
   await expect(page.locator('#start')).toBeDisabled();
 });
 
@@ -86,6 +118,8 @@ test('training cancellation cleans temporary data and permits another run', asyn
   test.setTimeout(180000);
   await page.goto('./');
   await page.locator('#video').setInputFiles(process.env.SPLAT_TEST_VIDEO);
+  await page.locator('#quality').selectOption('fast');
+  await page.locator('#advanced summary').click();
   await page.locator('#steps').selectOption('5000');
   await page.locator('#start').click();
   await expect(page.locator('#status')).toContainText('Training ', { timeout: 120000 });
