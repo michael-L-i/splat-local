@@ -12,7 +12,8 @@ export default defineConfig({
   },
   use: {
     baseURL: 'http://127.0.0.1:4180/', channel: process.env.CI ? undefined : 'chrome',
-    headless: !!process.env.CI, viewport: { width: 1440, height: 960 },
+    headless: !!process.env.CI, reducedMotion: 'reduce',
+    viewport: process.env.CI ? { width: 960, height: 720 } : { width: 1440, height: 960 },
     launchOptions: { args: process.env.CI ? ['--enable-unsafe-swiftshader'] : [] },
   },
 });

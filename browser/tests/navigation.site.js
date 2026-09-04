@@ -29,6 +29,7 @@ test('homepage, creator and viewer form one connected, green site', async ({ pag
 test('interactive demo and local file viewer still work', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => { if (message.type() === 'error') console.log(message.text()); });
   await page.goto('./');
   await expect(page.locator('#veil')).toHaveClass(/hidden/, { timeout: 60000 });
   await expect.poll(async () => (await page.locator('#canvas').screenshot()).length, { timeout: 30000 }).toBeGreaterThan(20000);
