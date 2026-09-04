@@ -24,8 +24,9 @@ its current five-step batch. Temporary browser files are removed after success,
 failure or cancellation; force-closing/reloading a tab can leave temporary data
 in site storage (clear that site's data to remove it).
 
-`npm run build` assembles `dist/` for any static HTTPS host; nothing is deployed
-automatically. Serve WASM with `application/wasm` and gzip/Brotli compression.
+`npm run build` assembles `dist/` for any static HTTPS host. The Pages workflow
+publishes it at `/splat-local/create/` alongside the unchanged homepage/viewer
+when deploying `web-demo` or `main`. Serve WASM with `application/wasm` and gzip/Brotli compression.
 Brush's generated WASM is ~67 MB uncompressed / ~6 MB gzip, and is gitignored.
 OpenCV and the viewer are bundled locally; there are no runtime CDN dependencies.
 
@@ -49,6 +50,13 @@ trainer or implement another splat format. The lockfile is pinned too.
 ```sh
 npm test
 SPLAT_TEST_VIDEO=/absolute/path/to/clip.mp4 SPLAT_TEST_STEPS=2000 npm run test:e2e
+```
+
+To test the actual deployed site instead (no local server is started):
+
+```sh
+SPLAT_TEST_URL=https://michael-l-i.github.io/splat-local/create/ \
+SPLAT_TEST_VIDEO=/absolute/path/to/clip.mp4 SPLAT_TEST_STEPS=5000 npm run test:e2e
 ```
 
 The browser suite builds the production bundle and runs locally installed

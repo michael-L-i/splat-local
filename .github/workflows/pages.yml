@@ -6,6 +6,7 @@ on:
     paths:
       - "site/**"
       - "viewer/**"
+      - "browser/**"
       - "vendor/spark/**"
       - "vendor/three/**"
       - ".github/workflows/pages.yml"
@@ -31,9 +32,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: browser/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.97.1'
+          targets: wasm32-unknown-unknown
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            vendor/brush_browser_src/target
+          key: brush-wasm-${{ runner.os }}-1.97.1-${{ hashFiles('browser/build-brush.sh', 'browser/brush-export.patch') }}
+      - run: npm install --global wasm-pack@0.15.0
+      - run: npm ci && npm test && npm run build:brush && npm run build
+        working-directory: browser
       # Pulls in the shared viewer engine and the vendored libs from the repo
       # root; site/ alone is not a complete page.
       - run: ./site/build.sh
+      - run: mkdir -p _site/create && cp -R browser/dist/. _site/create/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
