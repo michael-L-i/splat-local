@@ -19,7 +19,6 @@
     <aside>
       <p class="note experiment">Browser creator · experimental</p>
       <h1>Video to 3D.</h1>
-      <p class="intro">Create, explore, and take it with you.<br>Your video stays on this device.</p>
       <form id="form">
         <label>01 / Choose a video<input id="video" type="file" accept="video/*" required aria-describedby="capture-tip"></label>
         <video id="source" controls muted playsinline hidden aria-label="Source video preview"></video>
@@ -48,7 +47,7 @@
       <p class="note">Desktop Chrome/Edge with WebGPU. Keep this tab open. Results depend on your footage; lens distortion and loop closure are not corrected yet.</p>
     </aside>
     <section id="scene" aria-label="Reconstruction workspace">
-      <div class="toolbar"><span id="result-title">Your workspace</span><div class="view-controls">
+      <div class="toolbar"><span id="result-title">Preview</span><div class="view-controls">
         <button id="previous-view" class="secondary" aria-label="Previous captured camera" disabled>←</button>
         <span id="camera-view">Captured views</span>
         <button id="next-view" class="secondary" aria-label="Next captured camera" disabled>→</button>
@@ -56,7 +55,7 @@
       </div></div>
       <ol id="stages" aria-label="Creation stages"><li>Frames</li><li>Cameras</li><li>Training</li><li>Preview</li></ol>
       <div class="viewport"><canvas id="viewer" aria-label="3D splat preview" tabindex="0"></canvas></div>
-      <div id="empty"><h2>A new perspective.</h2><p>Choose a video to create your first scene.</p><p class="note">Everything runs here. No account, no upload.</p></div>
+      <div id="empty"><p>Select a video to begin.</p></div>
       <div id="result" hidden>
         <p id="stats"></p>
         <a id="download" hidden download="scene.ply">Download PLY</a>

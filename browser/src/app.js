@@ -136,7 +136,7 @@ $('form').onsubmit = async event => {
     }
   } catch (error) {
     setStage(-1); $('progress').value = 0;
-    $('result-title').textContent = downloadURL ? 'Previous result · kept safe' : 'Your workspace';
+    $('result-title').textContent = downloadURL ? 'Previous result' : 'Preview';
     if (!signal.aborted) $('status').setAttribute('data-error', '');
     const message = error.message || String(error);
     log(signal.aborted ? 'Cancelled. No partial splat exported.' : /device.*lost|out.of.memory|allocation failed/i.test(message)
