@@ -99,7 +99,7 @@ def run(job, work: Path, preset):
         del previews[:-2]
         return preview.name
 
-    def scan_checkpoints():
+    def scan_checkpoints(finished=False):
         nonlocal best_progress
         for p in sorted(export_dir.glob("export_*.ply"),
                         key=lambda p: int(re.search(r"export_(\d+)", p.name).group(1))):
@@ -107,6 +107,9 @@ def run(job, work: Path, preset):
                 continue
             m = re.search(r"export_(\d+)\.ply", p.name)
             step = int(m.group(1)) if m else None
+            # The final PLY bypasses preview validation: wait for a successful exit.
+            if step == preset.total_steps and not finished:
+                continue
             try:
                 name = stream_name(p, step)
             except PartialFile:
@@ -145,12 +148,12 @@ def run(job, work: Path, preset):
 
         proc.wait()
         job.proc = None
-        scan_checkpoints()
 
         if job.cancelled:
             raise JobCancelled()
         if proc.returncode != 0:
             raise RuntimeError("brush training failed:\n" + "".join(log_tail[-20:]))
+        scan_checkpoints(finished=True)
         if not seen_checkpoints:
             raise RuntimeError("brush training produced no checkpoints")
 
