@@ -3,6 +3,7 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from ..pipeline import JobCancelled, run_subprocess
 
@@ -36,9 +37,16 @@ def _npx_available() -> bool:
 
 
 def _transform(job, name: str, args: list[str]) -> bool:
-    """One splat-transform run (one output per invocation). False if it failed."""
+    """Publish a successful conversion atomically, preserving any existing output."""
+    target = Path(args[-1])
     try:
-        run_subprocess(job, _NPX_CMD + ["-w", *args], timeout=_TRANSFORM_TIMEOUT)
+        with TemporaryDirectory(dir=target.parent, prefix=".export-") as temp:
+            output = Path(temp) / target.name  # Keep the extension for format detection.
+            run_subprocess(job, _NPX_CMD + ["-w", *args[:-1], str(output)], timeout=_TRANSFORM_TIMEOUT)
+            if not output.is_file() or output.stat().st_size == 0:
+                raise RuntimeError("conversion produced no data")
+            job.check_cancelled()
+            output.replace(target)
         return True
     except JobCancelled:
         raise
@@ -72,6 +80,7 @@ def run(job, work: Path, preset):
     exports_dir.mkdir(parents=True, exist_ok=True)
     scene_ply = exports_dir / "scene.ply"
     shutil.copyfile(checkpoint, scene_ply)
+    files = [scene_ply]
 
     job.update(message="exporting scene", progress=0.3)
 
@@ -80,7 +89,9 @@ def run(job, work: Path, preset):
 
     if _npx_available():
         for name in _ARCHIVE_NAMES:
-            _transform(job, name, [str(checkpoint), "--filter-nan", str(exports_dir / name)])
+            path = exports_dir / name
+            if _transform(job, name, [str(checkpoint), "--filter-nan", str(path)]) and path != scene_ply:
+                files.append(path)
 
         job.update(message="building viewer scene", progress=0.6)
         # Near-transparent splats are where the overdraw goes; Morton order improves
@@ -92,12 +103,14 @@ def run(job, work: Path, preset):
             "--morton-order",
             str(view_path),
         ])
+        if view_ok:
+            files.append(view_path)
 
         job.update(message="measuring artifacts", progress=0.8)
-        for name in (*_ARCHIVE_NAMES, _VIEW_NAME):
-            measured = _stats(job, exports_dir / name) if (exports_dir / name).is_file() else None
+        for path in files:
+            measured = _stats(job, path)
             if measured:
-                stats[name] = measured
+                stats[path.name] = measured
 
         state, _ = job.snapshot()
         if view_ok and view_path.is_file() and state.get("checkpoint"):
@@ -106,9 +119,7 @@ def run(job, work: Path, preset):
 
     job.update(message="collecting artifacts", progress=0.9)
 
-    # Archive first — it is what most people came for — then the viewer artifact.
-    order = {name: i for i, name in enumerate((*_ARCHIVE_NAMES, _VIEW_NAME))}
-    files = sorted(exports_dir.iterdir(), key=lambda p: (order.get(p.name, len(order)), p.name))
+    # Only advertise this run's successful artifacts, archive first.
     artifacts = [
         {
             "name": p.name,
