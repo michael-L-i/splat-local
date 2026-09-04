@@ -80,6 +80,23 @@ completion measurements, **not a speed or quality comparison with native
 COLMAP/Brush**: frame counts, resolution and training settings differ substantially.
 No held-out PSNR/SSIM or broad browser/hardware benchmark has been performed.
 
+### GitHub Pages verification (2026-09-04)
+
+The actual public [creator](https://michael-l-i.github.io/splat-local/create/)
+completed a freshly downloaded [Pexels #7578547](https://www.pexels.com/video/video-of-a-house-interior-7578547/)
+video: 21.2 seconds of input, 24/24 registered cameras, 0.50 px median error,
+5,000 training steps and 100,000 splats in 65.7 seconds on this Mac. The result
+was recognizable but visibly blurry/streaky. All four browser tests passed
+against the HTTPS URL with no local test server: export integrity, preview,
+no external requests/uploads, invalid input, unsupported GPU and cancellation/retry.
+GitHub served the WASM as `application/wasm` with gzip compression (~6.4 MB transfer).
+The existing homepage's SHA-256 was unchanged before and after deployment.
+
+This is a test deployment from `web-demo`, not a merge into `main`. Deploying
+the old `main` workflow would restore the viewer-only site until these changes
+are merged. Screenshots, the PLY, run report and network audit remain local,
+gitignored test artifacts; the original video is not published with the site.
+
 ## Limits / next quality work
 
 - Fixed pinhole lens; automatic mode tries five FOVs and ranks camera coverage

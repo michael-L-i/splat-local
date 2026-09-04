@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 
 test('video to downloadable splat without a backend', async ({ page }) => {
   test.skip(!process.env.SPLAT_TEST_VIDEO, 'Set SPLAT_TEST_VIDEO to a local test clip.');
@@ -54,9 +54,14 @@ test('video to downloadable splat without a backend', async ({ page }) => {
   })).toEqual([]);
   expect(external).toEqual([]);
   expect(errors).toEqual([]);
-  await test.info().attach('network-audit', {
-    body: JSON.stringify({ page: page.url(), requests, external, errors }, null, 2), contentType: 'application/json',
-  });
+  await writeFile('test-results/network-audit.json', JSON.stringify({ page: page.url(), requests, external, errors }, null, 2));
+  const box = await page.locator('#viewer').boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2 + 20, { steps: 10 });
+  await page.mouse.up();
+  await page.waitForTimeout(1000);
+  await page.screenshot({ path: 'test-results/orbit.png', fullPage: true });
 });
 
 test('unsupported GPUs are explained before starting', async ({ page }) => {
