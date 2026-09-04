@@ -26,6 +26,8 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/vendor/brush_wasm_target
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -46,8 +48,8 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            vendor/brush_browser_src/target
-          key: brush-wasm-${{ runner.os }}-1.97.1-${{ hashFiles('browser/build-brush.sh', 'browser/brush-export.patch') }}
+            vendor/brush_wasm_target
+          key: brush-wasm-v2-${{ runner.os }}-1.97.1-${{ hashFiles('browser/build-brush.sh', 'browser/brush-export.patch') }}
       - run: npm install --global wasm-pack@0.15.0
       - run: npm ci && npm test && npm run build:brush && npm run build
         working-directory: browser

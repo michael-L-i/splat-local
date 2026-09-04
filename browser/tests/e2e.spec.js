@@ -4,9 +4,10 @@ import { readFile } from 'node:fs/promises';
 test('video to downloadable splat without a backend', async ({ page }) => {
   test.skip(!process.env.SPLAT_TEST_VIDEO, 'Set SPLAT_TEST_VIDEO to a local test clip.');
   test.setTimeout(20 * 60 * 1000);
-  const external = [], errors = [];
+  const external = [], errors = [], requests = [];
   const origin = new URL(test.info().project.use.baseURL).origin;
   page.on('request', request => {
+    requests.push({ method: request.method(), url: request.url() });
     if (/^https?:/.test(request.url()) && new URL(request.url()).origin !== origin) external.push(request.url());
     if (request.method() !== 'GET') external.push(`${request.method()} ${request.url()}`);
   });
@@ -53,6 +54,9 @@ test('video to downloadable splat without a backend', async ({ page }) => {
   })).toEqual([]);
   expect(external).toEqual([]);
   expect(errors).toEqual([]);
+  await test.info().attach('network-audit', {
+    body: JSON.stringify({ page: page.url(), requests, external, errors }, null, 2), contentType: 'application/json',
+  });
 });
 
 test('unsupported GPUs are explained before starting', async ({ page }) => {
