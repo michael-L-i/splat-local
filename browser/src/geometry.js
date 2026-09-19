@@ -6,6 +6,8 @@ const mul = (R, x) => [0, 1, 2].map(i => dot(R.slice(i * 3, i * 3 + 3), x));
 export const cameraPoint = ({ R, t }, x) => mul(R, x).map((v, i) => v + t[i]);
 export const center = ({ R, t }) => [0, 1, 2].map(i => -dot([R[i], R[i + 3], R[i + 6]], t));
 export const normalize = ([x, y], { f, width, height }) => [(x - width / 2) / f, (y - height / 2) / f];
+// Pixel tolerance for accepting an observation; scales with the long edge so presets behave alike.
+export const tolerance = ({ width, height }) => Math.max(3, Math.max(width, height) / 256);
 export function reprojection(pose, point, xy, camera) {
   const p = cameraPoint(pose, point);
   if (p[2] <= 0) return Infinity;
@@ -19,7 +21,7 @@ function nullVector(rows) {
 }
 
 // Linear triangulation; reject points with weak parallax or negative depth.
-export function triangulate(a, b, xyA, xyB, camera, minAngle = 0.5) {
+export function triangulate(a, b, xyA, xyB, camera, minAngle = 0.5, maxError = tolerance(camera)) {
   const rows = [];
   for (const [pose, xy] of [[a, xyA], [b, xyB]]) {
     const p = normalize(xy, camera);
@@ -31,7 +33,7 @@ export function triangulate(a, b, xyA, xyB, camera, minAngle = 0.5) {
   const h = nullVector(rows);
   const point = h.slice(0, 3).map(v => v / h[3]);
   if (!point.every(Number.isFinite)) return null;
-  if (reprojection(a, point, xyA, camera) > 3 || reprojection(b, point, xyB, camera) > 3) return null;
+  if (reprojection(a, point, xyA, camera) > maxError || reprojection(b, point, xyB, camera) > maxError) return null;
   const rays = [a, b].map(p => point.map((v, i) => v - center(p)[i]));
   const cosine = dot(...rays) / (Math.hypot(...rays[0]) * Math.hypot(...rays[1]));
   if (Math.acos(Math.max(-1, Math.min(1, cosine))) < minAngle * Math.PI / 180) return null;

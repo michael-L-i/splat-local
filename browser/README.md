@@ -17,8 +17,8 @@ npm run build:brush
 npm run dev                 # http://127.0.0.1:5173
 ```
 
-Choose a 1–60 second video, preferably a short, slow sideways move around a
-textured, stationary scene. Start with **Balanced** and automatic field of view.
+Choose a 1–120 second video, preferably a slow, steady move around a
+stationary scene. Start with **Balanced** and automatic field of view.
 Keep the tab open. Cancel stops reconstruction immediately or training after
 its current five-step batch. Temporary browser files are removed after success,
 failure or cancellation; force-closing/reloading a tab can leave temporary data
@@ -30,7 +30,9 @@ in site storage (clear that site's data to remove it).
 | Balanced | 32 | 960 px | 5,000 | 200k | 2 |
 | More detail | 48 | 1024 px | 10,000 | 300k | 2 |
 
-Advanced settings override frame/step counts. Sharp-frame selection compares
+Frame counts are minimums: the default **Auto** setting samples about 1.5 frames
+per second of footage (up to 96) so consecutive views of longer clips still
+overlap. Advanced settings override frame/step counts. Sharp-frame selection compares
 three nearby samples per interval without losing temporal coverage. Optional
 quality checks withhold every eighth registered view from **splat training**
 (not camera reconstruction), recording PSNR/SSIM in the run report. These scores
@@ -54,7 +56,11 @@ OpenCV and the viewer are bundled locally; there are no runtime CDN dependencies
   viewer and creator. Vite bundles it into the creator; Pages copies it for the site.
 - `src/frames.js`, `quality.js`: browser video decoder, sharp-frame selection and bounded presets.
 - `src/sfm.js`, `geometry.js`, `sfm-worker.js`: OpenCV/WASM AKAZE matching,
-  eight-point RANSAC initialization, incremental PnP and triangulation in a worker.
+  eight-point RANSAC initialization from several seed pairs, then best-first
+  incremental PnP and triangulation in a worker. Each view is matched against
+  its clip neighbours plus the most similar placed views (32×32 thumbnail
+  correlation), so walks that return to an earlier part of the scene reconnect.
+  Views that cannot be placed are skipped; a run needs at least five.
 - `src/refine.js`: robust joint camera/point/focal refinement (LM with Schur
   elimination); fixes the first pose, preserves baseline scale, rejects worsening
   steps and prunes inconsistent seed points. Manual focal length stays fixed.
@@ -168,9 +174,10 @@ passed on that clip, including both cancellation stages and retained output.
 
 - Pinhole lens; automatic mode tries five FOVs, then jointly refines the selected
   focal length, cameras and points. This is not a substitute for calibrated intrinsics.
-- No lens-distortion estimation or loop closure. Pure rotation, moving subjects and weak texture can fail or distort
-  geometry. Registration ≥75% and low reprojection error are only basic gates.
-- Up to 48 frames, 1024 px, SH2, 300k splat cap; PLY export only. No live splat preview
+- No lens-distortion estimation. Pure rotation, moving subjects and weak texture can
+  fail or distort geometry. At least five placed views and low reprojection error are
+  the only gates; partial coverage is accepted and noted in the log and report.
+- Up to 96 frames, 1024 px, SH2, 300k splat cap; PLY export only. No live splat preview
   during training yet. Mobile and GPU-loss recovery are not validated.
 - Before promoting this as production quality, benchmark against the native
   solver on the same held-out views and test multiple GPUs and capture styles.

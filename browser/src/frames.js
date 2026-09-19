@@ -21,7 +21,7 @@ function waitFor(target, event, signal) {
 
 export async function extractFrames(file, { count = 24, maxSize = 768, selectSharp = true, signal, progress }) {
   if (!file?.size) throw new Error('Choose a non-empty video first.');
-  if (file.size > 200 * 1024 ** 2) throw new Error('Choose a video smaller than 200 MB.');
+  if (file.size > 500 * 1024 ** 2) throw new Error('Choose a video smaller than 500 MB.');
   const video = document.createElement('video');
   const url = URL.createObjectURL(file);
   video.muted = true; video.preload = 'auto'; video.playsInline = true;
@@ -29,19 +29,20 @@ export async function extractFrames(file, { count = 24, maxSize = 768, selectSha
     const ready = waitFor(video, 'loadeddata', signal);
     video.src = url;
     await ready;
-    if (!Number.isFinite(video.duration) || video.duration < 1 || video.duration > 60) throw new Error('Choose a video between 1 and 60 seconds.');
+    if (!Number.isFinite(video.duration) || video.duration < 1 || video.duration > 120) throw new Error('Choose a video between 1 and 120 seconds.');
+    const total = typeof count === 'function' ? count(video.duration) : count;
     const scale = Math.min(1, maxSize / Math.max(video.videoWidth, video.videoHeight));
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(video.videoWidth * scale); canvas.height = Math.round(video.videoHeight * scale);
     const context = canvas.getContext('2d', { willReadFrequently: true });
     const frames = [];
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < total; i++) {
       signal.throwIfAborted();
       let best;
       for (const offset of selectSharp ? [0.25, 0.5, 0.75] : [0.5]) {
         signal.throwIfAborted();
         const seeked = waitFor(video, 'seeked', signal);
-        video.currentTime = video.duration * (i + offset) / count;
+        video.currentTime = video.duration * (i + offset) / total;
         await seeked;
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const image = context.getImageData(0, 0, canvas.width, canvas.height);
@@ -52,7 +53,7 @@ export async function extractFrames(file, { count = 24, maxSize = 768, selectSha
       const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.94));
       if (!blob) throw new Error('Could not encode a video frame.');
       frames.push({ ...best, blob });
-      progress(`Selected frame ${i + 1}/${count}`, (i+1)/count);
+      progress(`Selected frame ${i + 1}/${total}`, (i+1)/total);
     }
     return frames;
   } finally { video.removeAttribute('src'); video.load(); URL.revokeObjectURL(url); }

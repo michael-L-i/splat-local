@@ -4,6 +4,11 @@ export const presets = {
   detailed: { frames: 48, steps: 10000, resolution: 1024, maxSplats: 300000, shDegree: 2 },
 };
 
+// Automatic frame counts grow with clip length so consecutive views keep
+// overlapping, within a bound that keeps matching and training tractable.
+export const frameCount = (setting, duration, preset) =>
+  setting === 'auto' ? Math.min(96, Math.max(preset.frames, Math.round(duration * 1.5))) : Number(setting);
+
 // Variance of the luminance Laplacian; compare nearby frames, not different scenes.
 export function sharpness({ data, width, height }) {
   const gray = i => (data[i*4] + 2*data[i*4+1] + data[i*4+2]) / 4;

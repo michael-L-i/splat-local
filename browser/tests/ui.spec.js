@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('presets, advanced controls and narrow layouts remain usable', async ({ page }) => {
   await page.goto('./');
   await page.locator('#quality').selectOption('detailed');
-  await expect(page.locator('#quality-info')).toContainText('48 frames · 1024 px · 10,000 steps');
+  await expect(page.locator('#quality-info')).toContainText('48+ frames (more for longer clips) · 1024 px · 10,000 steps');
   await page.locator('#advanced summary').click();
   await page.locator('#frames').selectOption('24');
   await expect(page.locator('#quality-info')).toContainText('24 frames');

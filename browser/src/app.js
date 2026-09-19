@@ -1,7 +1,7 @@
 import { extractFrames } from './frames.js';
 import { writeDataset } from './dataset.js';
 import { train } from './train.js';
-import { presets } from './quality.js';
+import { frameCount, presets } from './quality.js';
 
 const $ = id => document.getElementById(id);
 let aborter, viewer, downloadURL, reportURL, sourceURL, stage = 0;
@@ -23,14 +23,14 @@ function setStage(index) {
   });
 }
 const progress = (text, fraction = 0) => { $('progress').value = (stage + fraction) / 4; log(text); };
-const settings = () => ({ ...presets[$('quality').value], frames: Number($('frames').value), steps: Number($('steps').value), selectSharp: $('sharp').checked, evaluate: $('evaluate').checked });
+const settings = () => ({ ...presets[$('quality').value], frames: $('frames').value === 'auto' ? 'auto' : Number($('frames').value), steps: Number($('steps').value), selectSharp: $('sharp').checked, evaluate: $('evaluate').checked });
 const describeQuality = () => {
-  const { frames, steps, resolution } = settings();
-  $('quality-info').textContent = `${frames} frames · ${resolution} px · ${steps.toLocaleString()} steps. Speed depends on your GPU.`;
+  const preset = presets[$('quality').value], { frames, steps, resolution } = settings();
+  $('quality-info').textContent = `${frames === 'auto' ? `${preset.frames}+ frames (more for longer clips)` : `${frames} frames`} · ${resolution} px · ${steps.toLocaleString()} steps. Speed depends on your GPU.`;
 };
 $('quality').onchange = () => {
   const preset = presets[$('quality').value];
-  $('frames').value = preset.frames; $('steps').value = preset.steps;
+  $('frames').value = 'auto'; $('steps').value = preset.steps;
   describeQuality();
 };
 $('frames').onchange = $('steps').onchange = describeQuality;
@@ -43,7 +43,7 @@ $('video').onchange = () => {
   if (file) {
     sourceURL = URL.createObjectURL(file); $('source').src = sourceURL;
     $('file-info').textContent = `${file.name} · ${(file.size / 1024**2).toFixed(1)} MB`;
-  } else $('file-info').textContent = '1–60 seconds · up to 200 MB';
+  } else $('file-info').textContent = '1–120 seconds · up to 500 MB';
 };
 $('reset-view').onclick = () => { $('camera-view').textContent = viewer.reset(); };
 $('previous-view').onclick = () => { $('camera-view').textContent = viewer.move(-1); };
@@ -88,8 +88,9 @@ $('form').onsubmit = async event => {
   try {
     try { wakeLock = await navigator.wakeLock?.request('screen'); } catch { /* Optional; not available in every browser. */ }
     signal.throwIfAborted();
-    const options = settings(), { frames: count, steps } = options;
-    const frames = await extractFrames($('video').files[0], { count, maxSize: options.resolution, selectSharp: options.selectSharp, signal, progress });
+    const options = settings(), { steps } = options, preset = presets[$('quality').value];
+    const frames = await extractFrames($('video').files[0], { count: duration => frameCount(options.frames, duration, preset), maxSize: options.resolution, selectSharp: options.selectSharp, signal, progress });
+    const count = options.frames = frames.length;
     const samples = frames.map(({ time, sharpness }) => ({ time, sharpness }));
     const { width, height } = frames[0].image;
     const camera = { width, height, f: $('fov').value === 'auto' ? null : width / (2 * Math.tan(Number($('fov').value) * Math.PI / 360)) };
@@ -97,6 +98,7 @@ $('form').onsubmit = async event => {
     setStage(1);
     const scene = await reconstruct(frames.map(f => f.image), camera, signal);
     log(`Reconstruction accepted: ${scene.report.registered}/${count} cameras; ${scene.report.fov.toFixed(0)}° lens; median error ${scene.report.medianError.toFixed(2)} px`);
+    scene.report.warnings?.forEach(warning => log(`Note: ${warning}`));
     dataset = await writeDataset(scene, frames, signal);
     frames.length = 0;
     log('Loading Brush WebGPU trainer…');

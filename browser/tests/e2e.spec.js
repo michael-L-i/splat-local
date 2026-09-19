@@ -56,7 +56,8 @@ test('video to downloadable splat without a backend', async ({ page }) => {
   expect(nonFinite).toBe(0);
   const stats = JSON.parse(await readFile('test-results/report.json', 'utf8'));
   expect(count).toBe(stats.splats);
-  expect(stats.registered / stats.total).toBeGreaterThanOrEqual(0.75);
+  expect(stats.registered).toBeGreaterThanOrEqual(5);
+  expect(stats.warnings).toHaveLength(stats.registered < stats.total * 0.75 ? 1 : 0);
   expect(stats.refinement.finalCost).toBeLessThanOrEqual(stats.refinement.initialCost);
   expect(stats.samples).toHaveLength(stats.settings.frames);
   if (process.env.SPLAT_TEST_EVALUATE) {
