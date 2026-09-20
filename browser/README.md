@@ -30,8 +30,13 @@ in site storage (clear that site's data to remove it).
 | Balanced | 32 | 960 px | 5,000 | 200k | 2 |
 | More detail | 48 | 1024 px | 10,000 | 300k | 2 |
 
-Advanced settings override frame/step counts. Sharp-frame selection compares
-three nearby samples per interval without losing temporal coverage. Optional
+Advanced settings override frame/step counts. Frame selection first surveys three
+times as many small frames, then spreads the chosen views along the camera's
+movement (70% image change, 30% time), so fast turns get more views and a paused
+camera fewer. Within each slot the sharpest frame wins; frames much softer than
+their neighbours, or barely moved from the previous pick, are a last resort. The
+survey costs one extra seek per chosen frame. Turning the option off samples
+evenly in time. Optional
 quality checks withhold every eighth registered view from **splat training**
 (not camera reconstruction), recording PSNR/SSIM in the run report. These scores
 are diagnostic, not proof of accurate geometry or good unseen viewpoints.
@@ -52,12 +57,17 @@ OpenCV and the viewer are bundled locally; there are no runtime CDN dependencies
 
 - `../site/assets/theme.css`: shared colors and navigation for the homepage,
   viewer and creator. Vite bundles it into the creator; Pages copies it for the site.
-- `src/frames.js`, `quality.js`: browser video decoder, sharp-frame selection and bounded presets.
+- `src/frames.js`, `quality.js`: browser video decoder, blur/movement-aware frame selection and bounded presets.
+- `src/support.js`: works out exactly which capability is missing (HTTPS, WebGPU, a GPU
+  adapter, WebGPU subgroups, or browser storage) and what to tell the visitor.
 - `src/sfm.js`, `geometry.js`, `sfm-worker.js`: OpenCV/WASM AKAZE matching,
   eight-point RANSAC initialization, incremental PnP and triangulation in a worker.
-- `src/refine.js`: robust joint camera/point/focal refinement (LM with Schur
-  elimination); fixes the first pose, preserves baseline scale, rejects worsening
-  steps and prunes inconsistent seed points. Manual focal length stays fixed.
+- `src/refine.js`: robust joint camera/point/focal/lens-distortion refinement (LM with
+  Schur elimination); fixes the first pose, preserves baseline scale and rejects worsening
+  steps. Manual focal length stays fixed. `sfm.js` runs it three times: a first pass, a
+  final global pass after dropping observations over 4 px, and a pass that adds radial
+  distortion (k1, k2). Distortion is kept only if it lowers the robust cost by at least
+  3%; otherwise the lens stays a pinhole. Brush trains with the same OpenCV model.
 - `src/dataset.js`: NeRF-style camera transforms, sparse PLY, temporary OPFS dataset.
 - `src/train.js`: pinned Brush/WASM trainer, bounded settings, cancellation and export.
 - `src/viewer.js`: existing shared Spark viewer rig, initially framed from a recovered camera.
@@ -99,7 +109,7 @@ SPLAT_TEST_STEPS=10000 SPLAT_TEST_EVALUATE=1 npm run test:e2e
 The browser suite builds the production bundle and runs locally installed
 Chrome, including real GPU training. It verifies the downloadable PLY's size,
 vertex count and finite values, successful preview loading, no external/network
-uploads, temporary-file cleanup, unsupported GPUs, invalid input and cancellation
+uploads, temporary-file cleanup, unsupported browsers, invalid input and cancellation
 followed by another training run, retained downloads after failures, preset
 controls and responsive layouts. CI runs numerical tests, native regression tests,
 and headless non-GPU UI checks; real GPU training is tested locally. Without a
@@ -164,11 +174,45 @@ A second 17.6 s exterior clip also completed with Balanced + held-out checks:
 23.42 dB PSNR / 0.612 SSIM. Foliage remains noticeably soft. Six browser checks
 passed on that clip, including both cancellation stages and retained output.
 
+### Frame selection, final adjustment and lens distortion (2026-09-20)
+
+Local production builds, same Mac/Chrome, Balanced (32 frames, 960 px, 5,000 steps),
+every eighth view withheld from training. "Before" is `main` at 633cfda.
+
+| Clip | Frames | Build | Lens found | Median error | Held-out PSNR / SSIM | End to end |
+|---|---|---|---|---:|---:|---:|
+| 17.6 s exterior | evenly timed | before | 87° pinhole | 0.27 px | 23.21 dB / 0.605 | 102 s |
+| 17.6 s exterior | evenly timed | after | 84° pinhole | 0.26 px | 23.34 dB / 0.615 | 109 s |
+| 17.6 s exterior | selected | before | 87° pinhole | 0.26 px | 23.46 dB / 0.612 | 115 s |
+| 17.6 s exterior | selected | after | 50°, k1 0.075, k2 0.150 | 0.25 px | 25.26 dB / 0.666 | 129 s |
+| 21.2 s Pexels interior | evenly timed | before | 79° pinhole | 0.31 px | 23.10 dB / 0.839 | 84 s |
+| 21.2 s Pexels interior | evenly timed | after | 81° pinhole | 0.31 px | 23.23 dB / 0.842 | 86 s |
+| 21.2 s Pexels interior | selected | after | 75° pinhole | 0.32 px | 24.44 dB / 0.864 | 95 s |
+
+What this does and does not show:
+
+- The evenly timed rows use identical frames and withheld views, so they isolate the
+  final global adjustment: about +0.1 dB, which is within run-to-run noise. Distortion
+  was rejected as unnecessary in those runs.
+- The "selected" rows pick different frames, so their withheld views differ too and
+  the comparison is not controlled. Evenly spread views are also easier to predict
+  from their neighbours. The +1.3 to +1.8 dB is encouraging, not proof.
+- The exterior clip's estimated lens varies widely between frame sets (50° to 87° here,
+  93° in a Node run on ffmpeg-decoded frames). Focal length and distortion are weakly
+  constrained by this footage, so treat the reported lens as a fit, not a calibration.
+- On copies of the exterior clip warped with ffmpeg `lenscorrection` (k1 = ±0.12), the
+  Node harness recovered k1 shifted in the matching direction (−0.093 barrel, +0.046
+  pincushion, −0.060 unwarped) with a 5–9% lower cost than a pinhole.
+- Results are still soft in foliage and outside the captured path. This is one machine
+  and two clips; it is **not parity with the native pipeline**.
+
 ## Limits / next quality work
 
-- Pinhole lens; automatic mode tries five FOVs, then jointly refines the selected
-  focal length, cameras and points. This is not a substitute for calibrated intrinsics.
-- No lens-distortion estimation or loop closure. Pure rotation, moving subjects and weak texture can fail or distort
+- Automatic mode tries five FOVs, then jointly refines the selected focal length,
+  radial distortion (k1, k2), cameras and points. This is not a substitute for
+  calibrated intrinsics; tangential distortion, rolling shutter and a shifted
+  principal point are not modelled. The in-page preview draws with a pinhole camera.
+- No loop closure. Pure rotation, moving subjects and weak texture can fail or distort
   geometry. Registration ≥75% and low reprojection error are only basic gates.
 - Up to 48 frames, 1024 px, SH2, 300k splat cap; PLY export plus a compressed SPZ. No live splat preview
   during training yet. Mobile and GPU-loss recovery are not validated.

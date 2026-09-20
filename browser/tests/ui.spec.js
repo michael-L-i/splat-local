@@ -22,7 +22,7 @@ test('cancelling frame extraction leaves no output and allows retry', async ({ p
   await page.goto('./');
   await page.locator('#video').setInputFiles(process.env.SPLAT_TEST_VIDEO);
   await page.locator('#start').click();
-  await expect(page.locator('#status')).toContainText('Selected frame', { timeout: 20000 });
+  await expect(page.locator('#status')).toContainText(/Surveying video|Selected frame/, { timeout: 20000 });
   await page.locator('#cancel').click();
   await expect(page.locator('#status')).toContainText('Cancelled.');
   await expect(page.locator('#start')).toBeEnabled();

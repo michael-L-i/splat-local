@@ -19,6 +19,7 @@ test('video to downloadable splat without a backend', async ({ page }) => {
   if (process.env.SPLAT_TEST_QUALITY) await page.locator('#quality').selectOption(process.env.SPLAT_TEST_QUALITY);
   await page.locator('#advanced summary').click();
   if (process.env.SPLAT_TEST_EVALUATE) await page.locator('#evaluate').check();
+  if (process.env.SPLAT_TEST_UNIFORM) await page.locator('#sharp').uncheck();
   if (process.env.SPLAT_TEST_FRAMES) await page.locator('#frames').selectOption(process.env.SPLAT_TEST_FRAMES);
   await page.locator('#steps').selectOption(process.env.SPLAT_TEST_STEPS || '200');
   if (process.env.SPLAT_TEST_FOV) await page.locator('#fov').selectOption(process.env.SPLAT_TEST_FOV);
@@ -100,13 +101,25 @@ test('video to downloadable splat without a backend', async ({ page }) => {
   await expect(page.locator('#download')).toBeVisible();
 });
 
-test('unsupported GPUs are explained before starting', async ({ page }) => {
+test('unsupported browsers are told exactly why and offered the demo', async ({ page }) => {
   await page.addInitScript(() => Object.defineProperty(navigator, 'gpu', { value: undefined }));
   await page.goto('./');
-  await expect(page.locator('#status')).toContainText('requires desktop Chrome/Edge');
+  await expect(page.locator('#status')).toContainText('WebGPU');
+  await expect(page.locator('#unsupported')).toHaveAttribute('data-reason', 'no-webgpu');
   await expect(page.locator('#start')).toBeDisabled();
-  await page.locator('#quality').selectOption('fast');
-  await expect(page.locator('#start')).toBeDisabled();
+  await expect(page.locator('#form')).toBeHidden();
+  await expect(page.getByRole('link', { name: 'Explore the demo scene' })).toHaveAttribute('href', '../');
+  await expect(page.getByRole('link', { name: 'Open a splat file' })).toHaveAttribute('href', '../viewer.html');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('link', { name: 'Explore the demo scene' })).toBeInViewport();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('a GPU without subgroups is named as the cause', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(navigator, 'gpu', { value: { requestAdapter: async () => ({ features: new Set() }) } }));
+  await page.goto('./');
+  await expect(page.locator('#unsupported')).toHaveAttribute('data-reason', 'no-subgroups');
+  await expect(page.locator('#unsupported-fix')).toContainText('subgroups');
 });
 
 test('invalid video fails clearly and leaves the form usable', async ({ page }) => {

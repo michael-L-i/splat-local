@@ -1,10 +1,10 @@
 import { nerfTransform } from './geometry.js';
 
 export function transforms(reconstruction) {
-  const { camera: { width, height, f }, frames } = reconstruction;
+  const { camera: { width, height, f, k1 = 0, k2 = 0 }, frames } = reconstruction;
   return {
     w: width, h: height, fl_x: f, fl_y: f, cx: width / 2, cy: height / 2,
-    camera_model: 'OPENCV', ply_file_path: 'points.ply',
+    camera_model: 'OPENCV', k1, k2, p1: 0, p2: 0, ply_file_path: 'points.ply',
     frames: frames.map(({ index, pose }) => ({ file_path: `images/${index}.jpg`, transform_matrix: nerfTransform(pose) })),
   };
 }

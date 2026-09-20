@@ -2,6 +2,7 @@ import { extractFrames } from './frames.js';
 import { writeDataset } from './dataset.js';
 import { train } from './train.js';
 import { presets } from './quality.js';
+import { checkSupport } from './support.js';
 
 const $ = id => document.getElementById(id);
 let aborter, viewer, downloadURL, spzURL, reportURL, sourceURL, stage = 0;
@@ -157,9 +158,15 @@ $('form').onsubmit = async event => {
   }
 };
 
-try {
-  const adapter = await navigator.gpu?.requestAdapter();
-  if (!adapter?.features.has('subgroups') || !navigator.storage?.getDirectory) throw new Error('This prototype requires desktop Chrome/Edge with WebGPU subgroups and browser file storage.');
+const support = await checkSupport();
+if (support.ok) {
   log('Ready. Choose a short video to begin.');
   $('start').disabled = false;
-} catch (error) { log(error.message); $('start').disabled = true; $('status').setAttribute('data-error', ''); }
+} else {
+  // Say exactly what is missing, and still give the visitor something to look at.
+  log(support.status); $('status').setAttribute('data-error', '');
+  $('unsupported-title').textContent = support.title; $('unsupported-fix').textContent = support.fix;
+  $('unsupported').dataset.reason = support.reason;
+  $('unsupported').hidden = false; $('form').hidden = true; document.querySelector('.run-status').hidden = true;
+  $('empty').querySelector('p').textContent = 'The creator can’t run in this browser.';
+}

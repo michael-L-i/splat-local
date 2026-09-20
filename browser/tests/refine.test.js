@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { refine } from '../src/refine.js';
-import { cameraPoint, center } from '../src/geometry.js';
+import { cameraPoint, center, identityPose, normalize, project, reprojection } from '../src/geometry.js';
 
-function fixture(outliers = false) {
+function fixture(outliers = false, perturb = true) {
   const camera = { width: 768, height: 432, f: 600 };
   let seed = 7;
   const random = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 2**32);
@@ -14,13 +14,14 @@ function fixture(outliers = false) {
     const [x,y,z] = cameraPoint(pose, xyz);
     return { frame, xy: [600*x/z + 384 + (outliers && id%12 === 0 && frame === 3 ? 30 : 0), 600*y/z + 216] };
   }));
-  frames.slice(1).forEach(frame => {
+  if (perturb) frames.slice(1).forEach(frame => {
     frame.pose.t = frame.pose.t.map(v => v + (random()-.5)*0.035);
     frame.pose.R = rotation(frame.index*0.03 + (random()-.5)*0.01);
   });
-  points.forEach(point => { point.xyz = point.xyz.map(v => v + (random()-.5)*0.08); });
+  if (perturb) points.forEach(point => { point.xyz = point.xyz.map(v => v + (random()-.5)*0.08); });
   return { scene: { camera, frames, points }, tracks };
 }
+fixture.clean = () => fixture(false, false);
 
 test('joint refinement reduces error without changing input, origin or scale', () => {
   const { scene, tracks } = fixture(), before = structuredClone(scene);
@@ -46,4 +47,29 @@ test('degenerate or non-finite scenes keep the original reconstruction', () => {
   assert.equal(refine(scene, tracks.map(t => t.slice(0, 2))), scene);
   scene.points[0].xyz[2] = NaN;
   assert.equal(refine(scene, tracks), scene);
+});
+
+test('lens distortion is recovered when present and stays near zero when absent', () => {
+  const curved = { k1: -0.12, k2: 0.03 };
+  for (const truth of [curved, { k1: 0, k2: 0 }]) {
+    const { scene, tracks } = fixture();
+    const exact = { ...scene.camera, ...truth };
+    // Re-observe the undisturbed points through the true lens.
+    const clean = fixture.clean();
+    clean.tracks.forEach((track, id) => track.forEach(o => { o.xy = project(clean.scene.frames[o.frame].pose, clean.scene.points[id].xyz, exact); }));
+    const result = refine(scene, clean.tracks, { iterations: 40, refineDistortion: true });
+    assert.ok(Math.abs(result.camera.k1 - truth.k1) < 0.01, `k1 ${result.camera.k1}`);
+    assert.ok(Math.abs(result.camera.k2 - truth.k2) < 0.02, `k2 ${result.camera.k2}`);
+    assert.equal(result.camera.f, scene.camera.f);
+    assert.equal(tracks.length, clean.tracks.length);
+  }
+});
+
+test('undistorting a pixel inverts the lens model', () => {
+  const camera = { width: 768, height: 432, f: 600, k1: -0.15, k2: 0.04 };
+  const point = [0.9, -0.5, 2];
+  const xy = project(identityPose(), point, camera);
+  const [x, y] = normalize(xy, camera);
+  assert.ok(Math.hypot(x - point[0]/point[2], y - point[1]/point[2]) < 1e-9);
+  assert.ok(reprojection(identityPose(), point, xy, camera) < 1e-9);
 });
