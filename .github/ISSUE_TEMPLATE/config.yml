@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Share your splat
+    url: https://github.com/michael-L-i/splat-local/discussions
+    about: Show what you made, including captures that went wrong.
+  - name: Question or capture advice
+    url: https://github.com/michael-L-i/splat-local/discussions
+    about: Ask how to film a scene, pick settings, or use the output.

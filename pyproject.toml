@@ -1,7 +1,7 @@
 [project]
 name = "splat-local"
 version = "0.1.0"
-description = "Local video -> 3D Gaussian Splat pipeline for Apple Silicon with a live web UI"
+description = "Video -> 3D Gaussian splat, in your browser or fully local on Apple Silicon. No cloud, no upload."
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",

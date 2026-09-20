@@ -13,7 +13,7 @@ cd "$(dirname "$0")/.."
 rm -rf _site
 mkdir -p _site/vendor
 cp -R site/. _site/
-rm -f _site/build.sh
+rm -f _site/build.sh _site/analytics.sh
 cp -R viewer _site/viewer
 cp -R vendor/spark vendor/three _site/vendor/
 

@@ -1,16 +1,26 @@
 <h1 align="center">Splat Local</h1>
 
-<p align="center"><b>Walk through a space once. Get a 3D scene you can fly through forever.</b></p>
+<p align="center"><b>Video → 3D Gaussian splat. In your browser, or fully local on Apple Silicon. No cloud, no upload.</b></p>
 
 <p align="center">
   <img alt="100% local" src="https://img.shields.io/badge/runs-100%25_local-2ea44f">
+  <img alt="Runs in the browser" src="https://img.shields.io/badge/browser-Chrome_%2F_Edge_WebGPU-4285F4?logo=googlechrome&logoColor=white">
   <img alt="Apple Silicon" src="https://img.shields.io/badge/Apple_Silicon-Metal_%2F_MPS-black?logo=apple&logoColor=white">
   <img alt="No cloud, no CUDA" src="https://img.shields.io/badge/cloud-none-blue">
   <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white">
   <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
 
-Turn a video walkthrough into a 3D Gaussian Splat and watch the scene resolve out of the fog, live, in your browser — no cloud, no CUDA, nothing leaves your Mac. Downloads as a full-resolution `.ply` (plus `.spz` when available).
+**Your video never leaves your machine.** Hosted tools like Luma and Polycam upload your footage to their servers; Splat Local reconstructs it on the device in front of you. Walk through a space once, get a 3D scene you can fly through forever — no account, no API keys, no CUDA.
+
+Two ways to run it:
+
+| | [Browser creator](https://michael-l-i.github.io/splat-local/create/) | [Native pipeline](#quickstart) |
+|---|---|---|
+| Runs on | any desktop Chrome / Edge with WebGPU | Apple Silicon Mac |
+| Install | none — open the page | `./setup.sh` |
+| Quality | experimental, lower resolution | COLMAP poses + Metal-native Brush training |
+| Output | `.ply` + `.spz` | full-resolution `.ply` + `.spz`, live training preview |
 
 <table>
 <tr>
@@ -29,7 +39,7 @@ Turn a video walkthrough into a 3D Gaussian Splat and watch the scene resolve ou
 
 ## Why
 
-- **Actually local.** Poses, training, and the viewer all run on your machine — nothing uploaded, no API keys, no CUDA required.
+- **Private by construction.** Poses, training, and the viewer all run on your machine — in a browser tab or on your Mac. There is no server to upload to, no API keys, no CUDA required.
 - **You watch it build.** Training checkpoints stream straight into the browser viewer, so the scene sharpens from fog into a real space in real time instead of a progress bar.
 - **Quality that holds up.** COLMAP-grade poses + a Metal-native trainer that matches CUDA gsplat output, not a lightweight approximation.
 
@@ -45,7 +55,7 @@ video ──▶ sharp frames ──▶ camera poses ──▶ splat training ─
 - **Poses**: [COLMAP](https://colmap.github.io) (`pycolmap`) with sequential matching + loop detection — best quality. Mapping runs on [GLOMAP](https://lpanaf.github.io/eccv24_glomap/)'s global solver, which is 1.2–2.0x faster than incremental mapping, with an automatic quality-gated fallback to the incremental mapper (see [Pose mapper](#pose-mapper)). Optional experimental backend: [Depth Anything 3](https://github.com/ByteDance-Seed/Depth-Anything-3) running on Apple's MPS — much faster, slightly lower fidelity.
 - **Training**: [Brush](https://github.com/ArthurBrussee/brush) — a Rust/Metal Gaussian-splat trainer that matches CUDA gsplat quality (MCMC densification, Mip-Splatting antialiasing, optional LPIPS loss). It exports `.ply` checkpoints throughout training, which the UI streams into a live [Spark](https://sparkjs.dev) viewer. The stream carries SH-truncated copies — dropping the SH bands above degree 1 sheds 36 of a checkpoint's 59 float properties, so previews are 2.6× smaller (a late checkpoint is ~45 MB instead of ~115 MB) and 2.6× cheaper to parse. The full-SH scene lands on screen the moment training ends.
 - **Export**: two artifact families, split on purpose. The **archive** you download (`scene.ply`, `scene.spz`) is full resolution with SH3 and only NaN/degenerate gaussians dropped — no quality decisions applied. The **view** artifact (`scene-view.sog`) is the same scene with near-transparent splats filtered out and Morton-reordered, which is what the browser loads. Half the splats in a typical scene are nearly invisible but still cost fill rate, so filtering them cuts overdraw ~22% without touching what you keep.
-- **Everything runs on your Mac.** No cloud, no CUDA.
+- **Everything runs on your Mac.** No cloud, no CUDA. (The [browser creator](browser/README.md) is a separate, smaller pipeline with the same rule: everything runs in the tab.)
 
 ## Quickstart
 
@@ -54,10 +64,10 @@ video ──▶ sharp frames ──▶ camera poses ──▶ splat training ─
 ./run.sh          # serves http://127.0.0.1:8000
 ```
 
-Experimental, no-backend alternative: [Browser lab](browser/README.md). It runs
-video decoding, a small camera solver and Brush training entirely in desktop
-Chrome/Edge. This is a lower-resolution prototype, not a replacement for the
-native pipeline's reconstruction quality.
+No Mac, or nothing to install? The [browser creator](https://michael-l-i.github.io/splat-local/create/)
+([source](browser/README.md)) runs video decoding, a small camera solver and Brush
+training entirely in desktop Chrome/Edge. It is experimental and lower-resolution,
+not a replacement for the native pipeline's reconstruction quality.
 
 Upload a video, pick a preset, watch it build. Presets:
 
@@ -111,6 +121,16 @@ Why the gate exists, what it checks, and the held-out-view PSNR behind the defau
 - Optional `.spz` archive + `.sog` viewer export uses `npx @playcanvas/splat-transform` (needs Node). Without it you still get the raw `scene.ply`.
 - Why not LingBot-World? It's an image→video *world generator* (28B params, CUDA-only, no 3D output) — the wrong tool for video→3D reconstruction, and it can't run on a Mac. This project uses the reconstruction stack that modern world-model papers themselves use for geometry.
 
+## Privacy
+
+Your video, frames and splats are processed on your device and never sent anywhere — in the browser creator, the viewer and the native app alike. There are no accounts and no runtime CDN dependencies.
+
+The hosted [demo site](https://michael-l-i.github.io/splat-local/) counts page views with [GoatCounter](https://www.goatcounter.com): no cookies, no personal data, just the page, the referrer and any `?ref=` tag on the link. The script is added at deploy time by [`site/analytics.sh`](site/analytics.sh), so the native app, local builds and forks carry no analytics at all.
+
+## Contributing
+
+Bug reports, failed captures and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). New here? Start with a [`good first issue`](https://github.com/michael-L-i/splat-local/labels/good%20first%20issue). Made something? [Share your splat](https://github.com/michael-L-i/splat-local/discussions).
+
 ## Layout
 
 | | |
@@ -118,6 +138,7 @@ Why the gate exists, what it checks, and the held-out-view PSNR behind the defau
 | `server/` | FastAPI app and the four pipeline stages |
 | `viewer/` | the Spark/three.js viewer engine, shared by the app and the demo site |
 | `web/` | the app's vanilla-JS UI |
+| `browser/` | the [browser creator](browser/README.md): video → splat entirely in desktop Chrome/Edge |
 | `site/` | the [demo site](https://michael-l-i.github.io/splat-local/); `site/build.sh` assembles it into `_site/` |
 | `vendor/` | Brush binary, three.js and Spark builds |
 | `jobs/` | per-run work dirs (gitignored) |
