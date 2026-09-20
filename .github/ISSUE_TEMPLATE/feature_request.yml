@@ -1,0 +1,28 @@
+name: Feature request
+description: Suggest an improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The goal, and where the project gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would help?
+      description: >-
+        Your idea, if you have one. Everything has to keep running on the user's
+        own device: no uploads and no hosted services.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Browser creator
+        - Native pipeline
+        - Splat viewer
+        - Demo site / docs
+        - Not sure

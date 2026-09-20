@@ -1,0 +1,50 @@
+name: Bug report
+description: Something crashed, hung, or produced a broken scene
+labels: [bug]
+body:
+  - type: dropdown
+    id: pipeline
+    attributes:
+      label: Which part?
+      options:
+        - Browser creator (michael-l-i.github.io/splat-local/create)
+        - Native pipeline (./run.sh on a Mac)
+        - Splat viewer
+        - Demo site / docs
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what you got instead.
+    validations:
+      required: true
+  - type: textarea
+    id: footage
+    attributes:
+      label: The video
+      description: >-
+        Length, resolution, how the camera moved and what the scene was. A link to
+        the clip helps most, if you can share it.
+  - type: input
+    id: settings
+    attributes:
+      label: Preset and settings
+      placeholder: Balanced, 32 frames, 5,000 steps, automatic field of view
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser version and GPU, or Mac model and macOS version.
+      placeholder: Chrome 140, RTX 4070, Windows 11
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Run log or report
+      description: >-
+        Paste the "Technical run log" or attach report.json (browser creator), or
+        the terminal output from ./run.sh (native).
+      render: text

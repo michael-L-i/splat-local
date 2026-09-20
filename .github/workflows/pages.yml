@@ -57,6 +57,11 @@ jobs:
       # root; site/ alone is not a complete page.
       - run: ./site/build.sh
       - run: mkdir -p _site/create && cp -R browser/dist/. _site/create/
+      # Cookieless page-view counts; a no-op until the GOATCOUNTER_CODE repo
+      # variable is set (Settings -> Secrets and variables -> Actions -> Variables).
+      - run: ./site/analytics.sh
+        env:
+          GOATCOUNTER_CODE: ${{ vars.GOATCOUNTER_CODE }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
