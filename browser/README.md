@@ -170,7 +170,7 @@ passed on that clip, including both cancellation stages and retained output.
   focal length, cameras and points. This is not a substitute for calibrated intrinsics.
 - No lens-distortion estimation or loop closure. Pure rotation, moving subjects and weak texture can fail or distort
   geometry. Registration ≥75% and low reprojection error are only basic gates.
-- Up to 48 frames, 1024 px, SH2, 300k splat cap; PLY export only. No live splat preview
+- Up to 48 frames, 1024 px, SH2, 300k splat cap; PLY export plus a compressed SPZ. No live splat preview
   during training yet. Mobile and GPU-loss recovery are not validated.
 - Before promoting this as production quality, benchmark against the native
   solver on the same held-out views and test multiple GPUs and capture styles.

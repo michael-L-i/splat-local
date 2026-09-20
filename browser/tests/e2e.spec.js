@@ -46,6 +46,12 @@ test('video to downloadable splat without a backend', async ({ page }) => {
   await page.locator('#report').click();
   await (await report).saveAs('test-results/report.json');
   const bytes = await readFile('test-results/scene.ply');
+  const compressed = page.waitForEvent('download');
+  await page.locator('#download-spz').click();
+  await (await compressed).saveAs('test-results/scene.spz');
+  const spz = await readFile('test-results/scene.spz');
+  expect([spz[0], spz[1]]).toEqual([0x1f, 0x8b]); // SPZ is a gzip stream.
+  expect(spz.length).toBeLessThan(bytes.length / 4);
   const end = bytes.indexOf('end_header\n') + 'end_header\n'.length;
   const header = bytes.subarray(0, end).toString();
   const count = Number(header.match(/element vertex (\d+)/)[1]);

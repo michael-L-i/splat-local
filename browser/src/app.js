@@ -4,7 +4,7 @@ import { train } from './train.js';
 import { presets } from './quality.js';
 
 const $ = id => document.getElementById(id);
-let aborter, viewer, downloadURL, reportURL, sourceURL, stage = 0;
+let aborter, viewer, downloadURL, spzURL, reportURL, sourceURL, stage = 0;
 const log = text => {
   const step = text.match(/^Training (\d+)\//);
   if (step && Number(step[1]) % 25 !== 0) return;
@@ -107,6 +107,13 @@ $('form').onsubmit = async event => {
     URL.revokeObjectURL(downloadURL); URL.revokeObjectURL(reportURL);
     downloadURL = URL.createObjectURL(result.blob);
     $('download').href = downloadURL; $('download').hidden = false;
+    URL.revokeObjectURL(spzURL); $('download-spz').hidden = true;
+    try {
+      const spz = await (await import('./spz.js')).plyToSpz(result.blob);
+      spzURL = URL.createObjectURL(spz);
+      $('download-spz').href = spzURL; $('download-spz').hidden = false;
+      log(`Compressed SPZ: ${(spz.size / 2 ** 20).toFixed(1)} MB (PLY ${(result.blob.size / 2 ** 20).toFixed(1)} MB)`);
+    } catch (error) { log(`SPZ export failed: ${error.message}. The PLY is still available.`); }
     const report = { ...scene.report, camera: scene.camera, settings: options, samples, steps, splats: result.count, validation: result.validation, seconds: (performance.now() - started) / 1000, experimental: true };
     reportURL = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
     $('report').href = reportURL; $('report').hidden = false;
