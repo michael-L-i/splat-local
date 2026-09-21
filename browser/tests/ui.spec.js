@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test';
 
 test('presets, advanced controls and narrow layouts remain usable', async ({ page }) => {
+  // The form only shows on a supported browser; CI has no GPU, and this test never trains.
+  await page.addInitScript(() => Object.defineProperty(navigator, 'gpu', { value: {
+    requestAdapter: async () => ({ features: new Set(['subgroups']) }),
+  } }));
   await page.goto('./');
   await page.locator('#quality').selectOption('detailed');
   await expect(page.locator('#quality-info')).toContainText('48 frames · 1024 px · 10,000 steps');
@@ -22,7 +26,7 @@ test('cancelling frame extraction leaves no output and allows retry', async ({ p
   await page.goto('./');
   await page.locator('#video').setInputFiles(process.env.SPLAT_TEST_VIDEO);
   await page.locator('#start').click();
-  await expect(page.locator('#status')).toContainText('Selected frame', { timeout: 20000 });
+  await expect(page.locator('#status')).toContainText(/Surveying video|Selected frame/, { timeout: 20000 });
   await page.locator('#cancel').click();
   await expect(page.locator('#status')).toContainText('Cancelled.');
   await expect(page.locator('#start')).toBeEnabled();

@@ -24,13 +24,25 @@ function rotate(R, rotation) {
     .mmul(Matrix.from1DArray(3, 3, R)).to1DArray();
 }
 
+// Radial distortion must stay monotonic (invertible) a little beyond the image corners.
+function invertible({ f, width, height, k1 = 0, k2 = 0 }) {
+  const limit = 1.3 * (width**2 + height**2) / (4 * f**2);
+  for (let i = 0; i <= 16; i++) {
+    const r2 = limit * i / 16;
+    if (1 + 3*k1*r2 + 5*k2*r2**2 <= 0.2) return false;
+  }
+  return true;
+}
+
 // Robust LM bundle adjustment. Eliminate 3D point blocks (Schur complement),
 // leaving a small camera system. Fix the first pose and preserve baseline scale.
+// Optionally refines the shared focal length and radial distortion (k1, k2).
 // Inputs are never mutated; rejected/non-finite steps cannot replace the scene.
-export function refine(scene, tracks, { iterations = 15, refineFocal = false, progress = () => {} } = {}) {
+export function refine(scene, tracks, { iterations = 15, refineFocal = false, refineDistortion = false, progress = () => {} } = {}) {
   if (scene.frames.length < 3 || !tracks.some(t => t.length >= 3)) return scene;
   let current = structuredClone(scene), error = cost(current, tracks), damping = 0.001;
-  const initial = error, n = (scene.frames.length - 1) * 6 + Number(refineFocal);
+  const intrinsics = [...(refineFocal ? ['f'] : []), ...(refineDistortion ? ['k1', 'k2'] : [])];
+  const poses = (scene.frames.length - 1) * 6, initial = error, n = poses + intrinsics.length;
   const baseline = Math.hypot(...center(scene.frames[1].pose));
   if (!Number.isFinite(error) || baseline < 1e-8) return scene;
   let accepted = 0;
@@ -39,19 +51,23 @@ export function refine(scene, tracks, { iterations = 15, refineFocal = false, pr
     for (let id = 0; id < tracks.length; id++) {
       const B = matrix(3), h = zeros(3), cross = new Map();
       for (const { frame, xy } of tracks[id]) {
-        const pose = current.frames[frame].pose, { f, width, height } = current.camera;
+        const pose = current.frames[frame].pose, { f, width, height, k1 = 0, k2 = 0 } = current.camera;
         const p = cameraPoint(pose, current.points[id].xyz), [x, y, z] = p;
-        const residual = [f*x/z + width/2 - xy[0], f*y/z + height/2 - xy[1]];
+        const u = [x/z, y/z], r2 = u[0]**2 + u[1]**2, d = 1 + k1*r2 + k2*r2**2, slope = 2 * (k1 + 2*k2*r2);
+        const residual = [f*u[0]*d + width/2 - xy[0], f*u[1]*d + height/2 - xy[1]];
         const weight = Math.min(1, 2 / Math.hypot(...residual));
-        const projection = [[f/z, 0, -f*x/z**2], [0, f/z, -f*y/z**2]];
+        // d(pixel)/d(normalized) through the lens, times d(normalized)/d(camera point).
+        const lens = [[f*(d + slope*u[0]**2), f*slope*u[0]*u[1]], [f*slope*u[0]*u[1], f*(d + slope*u[1]**2)]];
+        const projection = lens.map(row => [row[0]/z, row[1]/z, -(row[0]*x + row[1]*y)/z**2]);
+        const lensJacobian = { f: f*d, k1: f*r2, k2: f*r2**2 };
         const q = p.map((v, i) => v - pose.t[i]);
         const rotation = [[0, -q[2], q[1]], [q[2], 0, -q[0]], [-q[1], q[0], 0]];
         const indices = frame ? Array.from({ length: 6 }, (_, i) => (frame-1)*6+i) : [];
-        if (refineFocal) indices.push(n-1);
+        intrinsics.forEach((_, i) => indices.push(poses + i));
         for (let axis = 0; axis < 2; axis++) {
           const Jp = [0, 1, 2].map(i => dot(projection[axis], [pose.R[i], pose.R[i+3], pose.R[i+6]]));
           const Jc = frame ? [...rotation.map(v => dot(projection[axis], v)), ...projection[axis]] : [];
-          if (refineFocal) Jc.push(f * p[axis] / z);
+          for (const name of intrinsics) Jc.push(lensJacobian[name] * u[axis]);
           for (let i = 0; i < 3; i++) {
             h[i] += weight * Jp[i] * residual[axis];
             for (let j = 0; j < 3; j++) B[i][j] += weight * Jp[i] * Jp[j];
@@ -94,12 +110,16 @@ export function refine(scene, tracks, { iterations = 15, refineFocal = false, pr
         const rhs = h.map((v, j) => -v - [...cross].reduce((s, [i, row]) => s + row[j]*step[i], 0));
         candidate.points[id].xyz = candidate.points[id].xyz.map((v, j) => v + dot(inverse[j], rhs));
       });
-      if (refineFocal) candidate.camera.f *= Math.exp(Math.max(-0.05, Math.min(0.05, step[n-1])));
+      intrinsics.forEach((name, i) => {
+        const delta = Math.max(-0.05, Math.min(0.05, step[poses + i]));
+        if (name === 'f') candidate.camera.f *= Math.exp(delta);
+        else candidate.camera[name] = (candidate.camera[name] ?? 0) + delta;
+      });
       const scale = baseline / Math.hypot(...center(candidate.frames[1].pose));
       candidate.frames.forEach(frame => { frame.pose.t = frame.pose.t.map(v => v * scale); });
       candidate.points.forEach(point => { point.xyz = point.xyz.map(v => v * scale); });
       const next = cost(candidate, tracks), ratio = candidate.camera.f / scene.camera.width;
-      if (Number.isFinite(next) && next < error && ratio >= 0.3 && ratio <= 2) {
+      if (Number.isFinite(next) && next < error && ratio >= 0.3 && ratio <= 2 && invertible(candidate.camera)) {
         const improvement = error - next;
         current = candidate; error = next; accepted++;
         damping = Math.max(1e-7, damping / 3);

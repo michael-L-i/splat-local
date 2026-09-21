@@ -34,6 +34,6 @@ jobs:
         run: SPLAT_JS_ONLY=1 npm run build
       - run: npx playwright install --with-deps chromium
       - name: Test browser UI without GPU training
-        run: npm run test:e2e -- --grep 'unsupported GPUs|presets, advanced controls'
+        run: npm run test:e2e -- --grep 'unsupported browsers|without subgroups|presets, advanced controls'
       - name: Test assembled site navigation (real-GPU rendering runs locally)
         run: npm run test:site

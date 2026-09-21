@@ -1,4 +1,4 @@
-import { sharpness } from './quality.js';
+import { sharpness, thumbnail, motion, selectFrames } from './quality.js';
 
 function waitFor(target, event, signal) {
   return new Promise((resolve, reject) => {
@@ -34,25 +34,36 @@ export async function extractFrames(file, { count = 24, maxSize = 768, selectSha
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(video.videoWidth * scale); canvas.height = Math.round(video.videoHeight * scale);
     const context = canvas.getContext('2d', { willReadFrequently: true });
-    const frames = [];
-    for (let i = 0; i < count; i++) {
+    const seek = async time => {
       signal.throwIfAborted();
-      let best;
-      for (const offset of selectSharp ? [0.25, 0.5, 0.75] : [0.5]) {
-        signal.throwIfAborted();
-        const seeked = waitFor(video, 'seeked', signal);
-        video.currentTime = video.duration * (i + offset) / count;
-        await seeked;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const image = context.getImageData(0, 0, canvas.width, canvas.height);
-        const score = sharpness(image);
-        if (!best || score > best.sharpness) best = { image, sharpness: score, time: video.currentTime };
+      const seeked = waitFor(video, 'seeked', signal);
+      video.currentTime = time;
+      await seeked;
+    };
+    let times = Array.from({ length: count }, (_, i) => video.duration * (i + 0.5) / count);
+    if (selectSharp) {
+      // Survey three times as many small frames, then keep sharp ones spread along the camera's movement.
+      const small = document.createElement('canvas'), shrink = Math.min(1, 320 / Math.max(canvas.width, canvas.height));
+      small.width = Math.round(canvas.width * shrink); small.height = Math.round(canvas.height * shrink);
+      const survey = small.getContext('2d', { willReadFrequently: true }), candidates = [];
+      for (let i = 0; i < count * 3; i++) {
+        await seek(video.duration * (i + 0.5) / (count * 3));
+        survey.drawImage(video, 0, 0, small.width, small.height);
+        const image = survey.getImageData(0, 0, small.width, small.height), thumb = thumbnail(image);
+        candidates.push({ time: video.currentTime, sharpness: sharpness(image), thumb, move: i ? motion(thumb, candidates[i-1].thumb) : 0 });
+        progress(`Surveying video ${i + 1}/${count * 3}`, 0.6 * (i + 1) / (count * 3));
       }
-      context.putImageData(best.image, 0, 0);
+      times = selectFrames(candidates, count).map(i => candidates[i].time);
+    }
+    const frames = [], base = selectSharp ? 0.6 : 0;
+    for (let i = 0; i < times.length; i++) {
+      await seek(times[i]);
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const image = context.getImageData(0, 0, canvas.width, canvas.height);
       const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.94));
       if (!blob) throw new Error('Could not encode a video frame.');
-      frames.push({ ...best, blob });
-      progress(`Selected frame ${i + 1}/${count}`, (i+1)/count);
+      frames.push({ image, sharpness: sharpness(image), time: video.currentTime, blob });
+      progress(`Selected frame ${i + 1}/${count}`, base + (1 - base) * (i + 1) / count);
     }
     return frames;
   } finally { video.removeAttribute('src'); video.load(); URL.revokeObjectURL(url); }

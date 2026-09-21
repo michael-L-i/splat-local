@@ -132,6 +132,15 @@ async function mapFrames(frames, camera, cachedMatch, progress) {
   return { camera, frames: registered.map(({ index, pose }) => ({ index, pose })), points, report, tracks };
 }
 
+// Remove observations that disagree with the refined scene, and points left with
+// fewer than two views. Returns a new scene; tracks stay aligned with points.
+export function prune(scene, limit) {
+  const tracks = scene.tracks.map((track, id) => track.filter(o =>
+    reprojection(scene.frames[o.frame].pose, scene.points[id].xyz, o.xy, scene.camera) <= limit));
+  const keep = tracks.map(track => track.length >= 2);
+  return { ...scene, points: scene.points.filter((_, id) => keep[id]), tracks: tracks.filter((_, id) => keep[id]) };
+}
+
 export async function reconstruct(images, camera, progress = () => {}) {
   await cvReady;
   const frames = [], cache = new Map();
@@ -161,6 +170,25 @@ export async function reconstruct(images, camera, progress = () => {}) {
     if (!best) throw new Error('No stable initial camera pair. Try a textured scene with sideways motion.');
     progress('Refining camera positions and scene geometry…');
     best = refine(best, best.tracks, { refineFocal: !camera.f, progress });
+    const costs = [best.report.refinement];
+    // Final global pass: drop observations the first pass exposed as wrong, then
+    // re-solve everything. Keep lens distortion only if it clearly explains the
+    // matches better than a pinhole, so weak footage cannot invent a curved lens.
+    const pruned = prune(best, 4);
+    if (pruned.points.length >= 40) {
+      progress('Final global adjustment…');
+      best = refine(pruned, pruned.tracks, { refineFocal: !camera.f, progress });
+      if (best.report.refinement) costs.push(best.report.refinement);
+      progress('Estimating lens distortion…');
+      const curved = refine(best, best.tracks, { refineFocal: !camera.f, refineDistortion: true, progress });
+      const gain = curved.report.refinement;
+      if (curved !== best) progress(`Lens distortion candidate: k1 ${curved.camera.k1.toFixed(3)}, k2 ${curved.camera.k2.toFixed(3)}; cost ${(100 * gain.finalCost / gain.initialCost).toFixed(1)}% of pinhole`);
+      if (curved !== best && gain.finalCost < gain.initialCost * 0.97) { best = curved; costs.push(gain); }
+    }
+    const { k1 = 0, k2 = 0 } = best.camera;
+    best.report.refinement = { initialCost: costs[0]?.initialCost, finalCost: costs.at(-1)?.finalCost, accepted: costs.reduce((sum, c) => sum + (c?.accepted ?? 0), 0) };
+    best.report.distortion = { k1, k2 };
+    progress(k1 || k2 ? `Lens distortion: k1 ${k1.toFixed(3)}, k2 ${k2.toFixed(3)}` : 'Lens distortion: none needed');
     const errors = best.tracks.flatMap((track, id) => track.map(o => reprojection(best.frames[o.frame].pose, best.points[id].xyz, o.xy, best.camera))).sort((a, b) => a - b);
     const { report } = best;
     report.initialMedianError = report.medianError;

@@ -5,12 +5,33 @@ const dot = (a, b) => a.reduce((s, v, i) => s + v * b[i], 0);
 const mul = (R, x) => [0, 1, 2].map(i => dot(R.slice(i * 3, i * 3 + 3), x));
 export const cameraPoint = ({ R, t }, x) => mul(R, x).map((v, i) => v + t[i]);
 export const center = ({ R, t }) => [0, 1, 2].map(i => -dot([R[i], R[i + 3], R[i + 6]], t));
-export const normalize = ([x, y], { f, width, height }) => [(x - width / 2) / f, (y - height / 2) / f];
-export function reprojection(pose, point, xy, camera) {
+// Optional radial lens distortion (OpenCV k1, k2) on normalized coordinates.
+const radial = (r2, { k1 = 0, k2 = 0 }) => 1 + k1 * r2 + k2 * r2 * r2;
+export function distort([x, y], camera) {
+  const d = radial(x * x + y * y, camera);
+  return [x * d, y * d];
+}
+// Pixel -> undistorted normalized coordinates (fixed-point inverse, as OpenCV does).
+export function normalize([x, y], camera) {
+  const { f, width, height, k1 = 0, k2 = 0 } = camera;
+  const d = [(x - width / 2) / f, (y - height / 2) / f];
+  if (!k1 && !k2) return d;
+  let u = d;
+  for (let i = 0; i < 20; i++) {
+    const scale = radial(u[0] * u[0] + u[1] * u[1], camera);
+    u = [d[0] / scale, d[1] / scale];
+  }
+  return u;
+}
+export function project(pose, point, camera) {
   const p = cameraPoint(pose, point);
-  if (p[2] <= 0) return Infinity;
-  const q = normalize(xy, camera);
-  return Math.hypot(p[0] / p[2] - q[0], p[1] / p[2] - q[1]) * camera.f;
+  if (p[2] <= 0) return null;
+  const q = distort([p[0] / p[2], p[1] / p[2]], camera);
+  return [q[0] * camera.f + camera.width / 2, q[1] * camera.f + camera.height / 2];
+}
+export function reprojection(pose, point, xy, camera) {
+  const q = project(pose, point, camera);
+  return q ? Math.hypot(q[0] - xy[0], q[1] - xy[1]) : Infinity;
 }
 
 function nullVector(rows) {
