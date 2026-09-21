@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test';
 
 test('presets, advanced controls and narrow layouts remain usable', async ({ page }) => {
+  // The form only shows on a supported browser; CI has no GPU, and this test never trains.
+  await page.addInitScript(() => Object.defineProperty(navigator, 'gpu', { value: {
+    requestAdapter: async () => ({ features: new Set(['subgroups']) }),
+  } }));
   await page.goto('./');
   await page.locator('#quality').selectOption('detailed');
   await expect(page.locator('#quality-info')).toContainText('48 frames · 1024 px · 10,000 steps');
