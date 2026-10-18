@@ -142,5 +142,5 @@ Bug reports, failed captures and pull requests are welcome — see [CONTRIBUTING
 | `site/` | the [demo site](https://michael-l-i.github.io/splat-local/); `site/build.sh` assembles it into `_site/` |
 | `vendor/` | Brush binary, three.js and Spark builds |
 | `jobs/` | per-run work dirs (gitignored) |
-| `scripts/` | `eval.py` — held-out PSNR/SSIM harness, dev tooling only |
-| `docs/` | [API contract](docs/api.md), [pose mapper A/B](docs/pose-mapper.md), [step count](docs/step-count.md), [viewer cost](docs/viewer-cost.md) |
+| `scripts/` | dev tooling only: `eval.py`, a held-out PSNR/SSIM harness for training configs; `bench.py`, the pipeline over a fixed set of hard clips |
+| `docs/` | [API contract](docs/api.md), [pose mapper A/B](docs/pose-mapper.md), [step count](docs/step-count.md), [viewer cost](docs/viewer-cost.md), [benchmark](docs/benchmark.md) |
