@@ -1,0 +1,52 @@
+{
+  "clips": [
+    {
+      "name": "interior-baseline",
+      "video": "clips/pexels-7578547.mp4",
+      "tags": ["baseline", "4k", "smooth", "short"],
+      "notes": "Pexels #7578547, 11 s house interior. The demo scene; every default was tuned on it, so it should never regress."
+    },
+    {
+      "name": "exterior-foliage",
+      "video": "clips/exterior.mp4",
+      "tags": ["exterior", "foliage", "4k", "short"],
+      "notes": "17.6 s house exterior from the browser README measurements. Foliage stays soft."
+    },
+    {
+      "name": "bedroom-fast-turns",
+      "video": "clips/bedroom-fast-turns.mov",
+      "tags": ["long", "fast-turns", "white-walls", "phone", "hevc", "portrait"],
+      "notes": "~60 s handheld phone walk-around. Fast turns drop adjacent-frame matches to ~20."
+    },
+    {
+      "name": "multi-room-loop",
+      "video": "clips/multi-room-loop.mov",
+      "tags": ["long", "multi-room", "loop", "phone"],
+      "notes": "To capture: 2-5 min through several rooms, ending where it started."
+    },
+    {
+      "name": "pan-in-place",
+      "video": "clips/pan-in-place.mov",
+      "tags": ["rotation", "low-parallax", "phone"],
+      "notes": "To capture: stand still and turn at least 90 degrees for part of the clip, then walk on."
+    },
+    {
+      "name": "forward-corridor",
+      "video": "clips/forward-corridor.mov",
+      "tags": ["forward-motion", "low-parallax", "phone"],
+      "notes": "To capture: walk straight down a hallway, camera facing forward."
+    },
+    {
+      "name": "exposure-swing",
+      "video": "clips/exposure-swing.mov",
+      "tags": ["exposure", "phone"],
+      "notes": "To capture: auto-exposure on, from a bright window to a dark corner and back."
+    },
+    {
+      "name": "people-moving",
+      "video": "clips/people-moving.mov",
+      "tags": ["dynamic", "phone"],
+      "notes": "To capture: an ordinary walkthrough with someone crossing the frame."
+    }
+  ]
+}
